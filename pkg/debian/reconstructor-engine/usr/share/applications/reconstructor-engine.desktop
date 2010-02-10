@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Reconstructor Engine
+Comment=GNU/Linux customization and creation tool
+TryExec=/usr/bin/reconstructor
+Exec=/usr/bin/reconstructor
+Icon=/usr/lib/reconstructor/ui/icon.png
+Type=Application
+Categories=GNOME;GTK;System;
