@@ -3,4 +3,4 @@
 #   Reconstructor Engine Launcher
 #
 
-cd /usr/lib/reconstructor ; gksudo -D "Reconstructor Engine" "python engine.py --gui"
+cd /usr/share/reconstructor ; gksudo -D "Reconstructor Engine" "python engine.py --gui"

@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 #
-#    engine.py   
-#        Main script for Reconstructor
-#    Copyright (c) <2009> Reconstructor Team <reconstructor@aperantis.com>
+#   engine.py   
+#       Main script for Reconstructor
 #
-#    This program is free software; you can redistribute it and/or modify
+#    Copyright (C) 2010  Lumentica
+#       http://www.lumentica.com
+#       info@lumentica.com
+#
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
+#    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
@@ -15,11 +18,12 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License along
-#    with this program; if not, write to the Free Software Foundation, Inc.,
-#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 import os
+import platform
 import sys
 # set path
 sys.path.append(os.path.dirname(os.getcwd()))    
@@ -36,6 +40,7 @@ import urllib
 import urllib2
 import re
 import gzip
+import httplib
 from random import Random
 import string
 import datetime
@@ -588,6 +593,9 @@ def main(engine=None, gui=None):
                 update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', filename=filename, version=prj.version, download_key=eng.get_download_key(), log_filename=log_filename, file_size=file_size)
                 update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
             log.info('Build complete...')
+            if gui:
+                gui.send_stats()
+
 
     except Exception, d:
         log.error(d)
@@ -1047,6 +1055,35 @@ class ReconstructorGui(object):
         threading.Thread(target=main, args=[eng,self]).start()
         return True
 
+    def send_stats(self):
+        try:
+            params = urllib.urlencode({
+                'engine_author': settings.APP_AUTHOR,
+                'engine_name': settings.APP_NAME,
+                'engine_site_url': settings.SITE_URL,
+                'engine_version': settings.APP_VERSION,
+                'engine_dev_rev': settings.APP_DEV_REV,
+                'os_arch': platform.machine(),
+                'python_version': platform.python_version(),
+                'os_release': platform.release(),
+                'os_lang': os.environ['LANG'],
+                'os_distro': platform.dist()[0],
+                'os_version': platform.dist()[1],
+                'os_id': platform.dist()[2],
+                'project_name': self.filechooser_project.get_filename().split(os.sep)[-1],
+                })
+            headers = {'Content-type': 'application/x-www-form-urlencoded', 'Accept': 'text/plain'}
+            #srv = settings.APP_URL.split('//')[-1]
+            srv = 'build.reconstructor.org'
+            # use HTTPConnection for non SSL urls...
+            conn = httplib.HTTPSConnection(srv)
+            conn.request('POST', '/enginestat/', params, headers)
+            conn.close()
+        except Exception, d:
+            #print(d)
+            # ignore errors
+            pass
+
     def build_complete(self):
         # reset UI
         self.main_window.set_title(settings.APP_NAME)
@@ -1083,6 +1120,94 @@ class ReconstructorGui(object):
     def on_toolbutton_help_clicked(self, widget, data=None):
         # open a new tab in the default browser to the UserGuide
         webbrowser.open_new_tab(settings.HELP_URL)
+
+    def on_button_chroot_clicked(self, widget, data=None):
+        working_dir = self.filechooser_working_dir.get_filename()
+        if not os.path.exists(os.path.join(working_dir, 'live_fs')):
+            log.error('You must extract the ISO first...')
+            return
+        try:
+            # setup environment
+            # copy dns info
+            log.debug("Copying DNS info...")
+            shutil.copy('/etc/resolv.conf', os.path.join(working_dir, 'live_fs/etc/resolv.conf'))
+            #os.system('cp -f /etc/resolv.conf ' + os.path.join(working_dir, "live_fs/etc/resolv.conf"))
+            # mount /proc
+            log.debug("Mounting /proc filesystem...")
+            os.system('mount --bind /proc \"' + os.path.join(working_dir, "live_fs/proc") + '\"')
+            # copy apt.conf
+            log.debug("Copying apt configuration...")
+            if not os.path.exists(os.path.join(working_dir, "live_fs/etc/apt/apt.conf.d/")):
+                os.makedirs(os.path.join(working_dir, "live_fs/etc/apt/apt.conf.d/"))
+
+            #shutil.copy2('/etc/apt/apt.conf.d/', os.path.join(working_dir, 'live_fs/etc/apt/apt/conf.d/'))
+            os.system('cp -f /etc/apt/apt.conf.d/* ' + os.path.join(working_dir, "live_fs/etc/apt/apt.conf.d/"))
+            # copy wgetrc
+            log.debug("Copying wgetrc configuration...")
+            # backup
+            if os.path.exists('/etc/wgetrc'):
+                try:
+                    shutil.copy(os.path.join(working_dir, 'live_fs/etc/wgetrc'), os.path.join(working_dir, 'live_fs/etc/wgetrc.orig'))
+                except:
+                    pass
+            #os.system('mv -f \"' + os.path.join(working_dir, "live_fs/etc/wgetrc") + '\" \"' + os.path.join(working_dir, "live_fs/etc/wgetrc.orig") + '\"')
+                shutil.copy('/etc/wgetrc', os.path.join(working_dir, 'live_fs/etc/wgetrc'))
+            #os.system('cp -f /etc/wgetrc ' + os.path.join(working_dir, "live_fs/etc/wgetrc"))
+            # HACK: create temporary script for chrooting
+            scr = '#!/bin/sh\n#\n#\t(c) Lumentica, 2010\n#\nchroot ' + os.path.join(working_dir, "live_fs/") + '\n'
+            f=open('/tmp/reconstructor-terminal.sh', 'w')
+            f.write(scr)
+            f.close()
+            os.chmod('/tmp/reconstructor-terminal.sh', 0775)
+            #os.system('chmod a+x ' + os.path.join(working_dir, "/tmp/reconstructor-terminal.sh"))
+            # TODO: replace default terminal title with "Reconstructor Terminal"
+            # use gnome-terminal if available -- more features
+            if commands.getoutput('which gnome-terminal') != '':
+                log.info('Launching terminal for advanced customization...')
+                os.system('export HOME=/root ; gnome-terminal --hide-menubar -t \"Reconstructor Terminal\" -e \"/tmp/reconstructor-terminal.sh\"')
+            else:
+                log.info('Launching terminal for advanced customization...')
+                # use xterm if gnome-terminal isn't available
+                os.system('export HOME=/root ; xterm -bg black -fg white -rightbar -title \"Reconstructor Terminal\" -e /tmp/reconstructor-terminal.sh')
+
+            # restore wgetrc
+            log.debug("Restoring wgetrc configuration...")
+            try:
+                shutil.move(os.path.join(working_dir, 'live_fs/etc/wgetrc.orig'), os.path.join(working_dir, 'live_fs/etc/wgetrc'))
+            except:
+                pass
+            #os.system('mv -f \"' + os.path.join(working_dir, "live_fs/etc/wgetrc.orig") + '\" \"' + os.path.join(working_dir, "live_fs/etc/wgetrc") + '\"')
+            # remove apt.conf
+            #log.info("Removing apt.conf configuration...")
+            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+            # remove dns info
+            log.debug("Removing DNS info...")
+            os.remove(os.path.join(working_dir, 'live_fs/etc/resolv.conf'))
+            #os.system('rm -Rf \"' + os.path.join(working_dir, "live_fs/etc/resolv.conf") + '\"')
+            # umount /proc
+            log.debug("Umounting /proc...")
+            os.system('umount \"' + os.path.join(working_dir, 'live_fs/proc/') + '\"')
+            # remove temp script
+            os.remove('/tmp/reconstructor-terminal.sh')
+        except Exception, detail:
+            # restore settings
+            # restore wgetrc
+            log.debug("Restoring wgetrc configuration...")
+            if os.path.exists(os.path.join(working_dir, 'live_fs/etc/wgetrc.orig')):
+                shutil.move(os.path.join(working_dir, 'live_fs/etc/wgetrc.orig'), os.path.join(working_dir, 'live_fs/etc/wgetrc'))
+            #os.system('mv -f \"' + os.path.join(working_dir, "live_fs/etc/wgetrc.orig") + '\" \"' + os.path.join(working_dir, "live_fs/etc/wgetrc") + '\"')
+            # remove apt.conf
+            #log.info("Removing apt.conf configuration...")
+            #os.popen('rm -Rf \"' + os.path.join(self.customDir, "root/etc/apt/apt.conf") + '\"')
+            # remove dns info
+            log.debug("Removing DNS info...")
+            os.remove(os.path.join(working_dir, "live_fs/etc/resolv.conf"))
+            # umount /proc
+            log.debug("Umounting /proc...")
+            os.system('umount \"' + os.path.join(working_dir, "live_fs/proc/") + '\"')
+            # remove temp script
+            os.system('/tmp/reconstructor-terminal.sh')
+
 
     def on_destroy(self, widget, data=None):
         self.cleanup()

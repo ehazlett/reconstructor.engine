@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 #
-#    ubuntu.py   
-#        Ubuntu distro module
-#    Copyright (c) <2009> Reconstructor Team <reconstructor@aperantis.com>
+#    debian.py   
+#        Debian distro module
 #
-#    This program is free software; you can redistribute it and/or modify
+#    Copyright (C) 2010  Lumentica
+#       http://www.lumentica.com
+#       info@lumentica.com
+#
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
+#    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
@@ -15,9 +18,10 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License along
-#    with this program; if not, write to the Free Software Foundation, Inc.,
-#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
 
 from reconstructor.core.distro.base import BaseDistro
 from reconstructor.core import fs_tools
@@ -28,23 +32,23 @@ import tempfile
 import os
 import shutil
 
-class UbuntuDistro(BaseDistro):
+class DebianDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None):
         # call base distro __init__
-        super(UbuntuDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
-        self.log = logging.getLogger('UbuntuDistro')
+        super(DebianDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
+        self.log = logging.getLogger('DebianDistro')
         # set live fs filename
-        super(UbuntuDistro, self).set_live_fs_filename(os.path.join(super(UbuntuDistro, self).get_iso_fs_dir(), 'casper' + os.sep + 'filesystem.squashfs'))
+        super(DebianDistro, self).set_live_fs_filename(os.path.join(super(DebianDistro, self).get_iso_fs_dir(), 'live' + os.sep + 'filesystem.squashfs'))
         # set local vars
-        self.__arch = super(UbuntuDistro, self).get_arch()
-        self.__work_dir = super(UbuntuDistro, self).get_work_dir()
-        self.__live_fs_dir = super(UbuntuDistro, self).get_live_fs_dir()
-        self.__iso_fs_dir = super(UbuntuDistro, self).get_iso_fs_dir()
-        self.__initrd_dir = super(UbuntuDistro, self).get_initrd_dir()
-        self.__src_iso_filename = super(UbuntuDistro, self).get_src_iso_filename()
-        self.__live_fs_filename = super(UbuntuDistro, self).get_live_fs_filename()
-        self.__online = super(UbuntuDistro, self).get_online()
-        self.__run_post_config = super(UbuntuDistro, self).get_run_post_config()
+        self.__arch = super(DebianDistro, self).get_arch()
+        self.__work_dir = super(DebianDistro, self).get_work_dir()
+        self.__live_fs_dir = super(DebianDistro, self).get_live_fs_dir()
+        self.__iso_fs_dir = super(DebianDistro, self).get_iso_fs_dir()
+        self.__initrd_dir = super(DebianDistro, self).get_initrd_dir()
+        self.__src_iso_filename = super(DebianDistro, self).get_src_iso_filename()
+        self.__live_fs_filename = super(DebianDistro, self).get_live_fs_filename()
+        self.__online = super(DebianDistro, self).get_online()
+        self.__run_post_config = super(DebianDistro, self).get_run_post_config()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
 
@@ -75,18 +79,21 @@ class UbuntuDistro(BaseDistro):
             f = os.listdir('%s' % (os.path.join(self.__live_fs_dir, 'boot')))
             for k in f:
                 if k.find('initrd.img') > -1:
-                    # copy the initrd to iso dir
-                    # check for initrd.gz
-                    if os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')):
-                        self.log.debug('Using %s for initial ramdisk...' % (k))
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/casper/initrd.gz' % (self.__iso_fs_dir))
-                    # check for initrd.lz
-                    if os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')):
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/casper/initrd.lz' % (self.__iso_fs_dir))
+                    if k.find('486') > -1:
+                        # copy the 486 initrd to iso dir
+                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd1.img' % (self.__iso_fs_dir))
+                    elif k.find('686') > -1:
+                        # copy the 686 initrd to iso dir
+                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd2.img' % (self.__iso_fs_dir))
+
                 if k.find('vmlinuz-') > -1:
-                    self.log.debug('Using %s for kernel...' % (k))
-                    # copy the kernel to iso dir
-                    shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/casper/vmlinuz' % (self.__iso_fs_dir))
+                    if k.find('486') > -1:
+                        # copy the 486 kernel to iso dir
+                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz1' % (self.__iso_fs_dir))
+                    elif k.find('686') > -1:
+                        # copy the  686 kernel to iso dir
+                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz2' % (self.__iso_fs_dir))
+                        
 
         except Exception, d:
             self.log.error('Error updating boot kernel: %s' % (d))
@@ -95,11 +102,9 @@ class UbuntuDistro(BaseDistro):
     def build_live_fs(self):
         try:
             # update package manifest
-            self.log.info('Updating Package manifests...')
-            #os.system('chroot %s dpkg -l | awk \'{print $2\" \"$3}\' | tail -n +6 > %s/casper/filesystem.manifest' % (self.__live_fs_dir, self.__iso_fs_dir))
-            os.system('chroot %s dpkg-query -W --showformat=\'${Package} ${Version}\n\' > %s/casper/filesystem.manifest' %(self.__live_fs_dir, self.__iso_fs_dir))
-            os.system('sed -ie \'/ubiquity/d\' %s/casper/filesystem.manifest' % (self.__iso_fs_dir))
-            shutil.copy('%s/casper/filesystem.manifest' % (self.__iso_fs_dir), '%s/casper/filesystem.manifest-desktop' % (self.__iso_fs_dir))
+            self.log.info('Updating Package list...')
+            #os.system('chroot %s dpkg -l > %s/live/packages.txt' % (self.__live_fs_dir, self.__iso_fs_dir))
+            os.system('chroot %s dpkg-query -W --showformat=\'${Package} ${Version}\' > %s/live/packages.txt' %(self.__live_fs_dir, self.__iso_fs_dir))
             self.log.info('Building squash filesystem: %s' % (self.__live_fs_filename))
             if squash_tools.create_squash_fs(mksquashfs_cmd=self.__mksquash, source_dir=self.__live_fs_dir, dest_filename=self.__live_fs_filename, overwrite=True):
                 if os.path.exists(self.__live_fs_filename):
@@ -120,16 +125,13 @@ class UbuntuDistro(BaseDistro):
             self.log.debug('Extracting initial ramdisk...')
             if not os.path.exists(self.__initrd_dir):
                 os.makedirs(self.__initrd_dir)
-            # check for initrd.gz
-            if os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')):
-                initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')
-                os.system('cd %s; cat %s | gzip -d | cpio -i' % (self.__initrd_dir, initrd))
-                return True
-            # check for new initrd.lz
-            elif os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')):
-                initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')
-                os.system('cd %s; unlzma -c -S .lz %s | cpio -id' % (self.__initrd_dir, initrd))
-                return True
+                os.makedirs(os.path.join(self.__initrd_dir, 'initrd1'))
+                os.makedirs(os.path.join(self.__initrd_dir, 'initrd2'))
+            initrd1 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd1.img')
+            initrd2 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd1.img')
+            os.system('cd %s; cat %s | gzip -d | cpio -i' % (os.path.join(self.__initrd_dir, 'initrd1'), initrd1))
+            os.system('cd %s; cat %s | gzip -d | cpio -i' % (os.path.join(self.__initrd_dir, 'initrd2'), initrd2))
+            return True
         except Exception, d:
             self.log.error('Error extracting initrd: %s' % (d))
             return False
@@ -137,18 +139,13 @@ class UbuntuDistro(BaseDistro):
     def build_initrd(self):
         try:
             self.log.debug('Building initial ramdisk...')
-            # check for initrd.gz
-            if os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')):
-                initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')
-                os.remove(initrd)
-                os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (self.__initrd_dir, initrd))
-                return True
-            # check for initrd.lz
-            elif os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')):
-                initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')
-                os.remove(initrd)
-                os.system('cd %s; find | cpio -H newc -o | lzma -9 -e > %s' % (self.__initrd_dir, initrd))
-                return True
+            initrd1 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd1.img')
+            initrd2 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd2.img')
+            os.remove(initrd1)
+            os.remove(initrd2)
+            os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd1'), initrd1))
+            os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd2'), initrd2))
+            return True
         except Exception, d:
             self.log.error('Error building initrd: %s' % (d))
             return False
@@ -163,14 +160,8 @@ class UbuntuDistro(BaseDistro):
             new_cfg = ''
             # enable repos
             for l in cfg:
-                if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
+                if l.find('deb') > -1 and l.find('main') > -1 and l.find('contrib') == -1 and l.find('non-free') == -1:
+                    new_cfg += l  + ' contrib non-free\n'
                 else:
                     new_cfg += l + '\n'
             f = open(sources_cfg, 'w')
