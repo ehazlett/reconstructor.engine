@@ -204,7 +204,7 @@ class UbuntuDistro(BaseDistro):
                 # for java 5
                 java_bypass = 'sun-java5-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre sun-java5-jre/stopthread boolean true\nsun-java5-jre sun-java5-jre/jcepolicy note\nsun-java5-bin shared/present-sun-dlj-v1-1 note\nsun-java5-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
                 # for java 6
-                java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
+                java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-doc shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
                 # create temp script
                 scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
                 f = open(scr_file, 'w')
