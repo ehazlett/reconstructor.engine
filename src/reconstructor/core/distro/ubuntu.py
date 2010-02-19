@@ -194,8 +194,6 @@ class UbuntuDistro(BaseDistro):
                 else:
                     for p in packages:
                         pkg_list += '%s ' % (p)
-                # TODO: FIX: temporarily remove sun-java6-doc package as it's just a meta package and it halts the build server
-                pkg_list = pkg_list.replace('sun-java6-doc', '')
                 # check for java
                 for p in packages:
                     if p.find('java') > 0:
