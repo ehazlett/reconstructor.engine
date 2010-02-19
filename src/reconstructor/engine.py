@@ -50,7 +50,7 @@ from reconstructor import settings
 from reconstructor.core import fs_tools
 from reconstructor.core import iso_tools
 from reconstructor.core import squash_tools
-from reconstructor.core.distro import ubuntu, ubuntu_ec2, fedora, debian
+from reconstructor.core.distro import ubuntu, ubuntu_ec2, centos, debian
 from reconstructor.config import Project
 
 # logging vars
@@ -634,7 +634,7 @@ class BuildEngine(object):
         self.log = logging.getLogger('BuildEngine')
         #self.log.debug('%s, %s, %s, %s, %s, %s, %s, %s' % (distro, arch, description, working_dir, src_iso_filename, project, lvm_name, output_file))
         self.log.debug('Engine initialized...')
-        self.__all_distros = ['ubuntu','fedora','debian',]
+        self.__all_distros = ['ubuntu','centos','debian',]
         self.__arch = arch
         self.__distro_name = distro.lower()
         self.log.debug('Distro: %s Arch: %s' % (self.__distro_name, self.__arch))
@@ -691,8 +691,8 @@ class BuildEngine(object):
                     self.log.debug('Loading Live project...')
                     if distro_name == 'ubuntu':
                         self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
-                    elif distro_name == 'fedora':
-                        self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                    elif distro_name == 'centos':
+                        self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                     elif distro_name == 'debian':
                         self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                     else:
@@ -709,8 +709,8 @@ class BuildEngine(object):
             else:
                 if distro_name == 'ubuntu':
                     self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
-                elif distro_name == 'fedora':
-                    self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                elif distro_name == 'centos':
+                    self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                 elif distro_name == 'debian':
                     self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 #
-#    fedora.py   
-#        Fedora distro module
+#    centos.py
+#        CentOS distro module
 #
 #    Copyright (C) 2010  Lumentica
 #       http://www.lumentica.com
@@ -33,23 +33,23 @@ import os
 import shutil
 import commands
 
-class FedoraDistro(BaseDistro):
+class CentosDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None):
         # call base distro __init__
-        super(FedoraDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
-        self.log = logging.getLogger('FedoraDistro')
+        super(CentosDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
+        self.log = logging.getLogger('CentosDistro')
         # set live fs filename
-        super(FedoraDistro, self).set_live_fs_filename(os.path.join(super(FedoraDistro, self).get_iso_fs_dir(), 'LiveOS' + os.sep + 'squashfs.img'))
+        super(CentosDistro, self).set_live_fs_filename(os.path.join(super(FedoraDistro, self).get_iso_fs_dir(), 'LiveOS' + os.sep + 'squashfs.img'))
         # set local vars
-        self.__arch = super(FedoraDistro, self).get_arch()
-        self.__work_dir = super(FedoraDistro, self).get_work_dir()
-        self.__live_fs_dir = super(FedoraDistro, self).get_live_fs_dir()
-        self.__iso_fs_dir = super(FedoraDistro, self).get_iso_fs_dir()
-        self.__initrd_dir = super(FedoraDistro, self).get_initrd_dir()
-        self.__src_iso_filename = super(FedoraDistro, self).get_src_iso_filename()
-        self.__live_fs_filename = super(FedoraDistro, self).get_live_fs_filename()
-        self.__online = super(FedoraDistro, self).get_online()
-        self.__run_post_config = super(FedoraDistro, self).get_run_post_config()
+        self.__arch = super(CentosDistro, self).get_arch()
+        self.__work_dir = super(CentosDistro, self).get_work_dir()
+        self.__live_fs_dir = super(CentosDistro, self).get_live_fs_dir()
+        self.__iso_fs_dir = super(CentosDistro, self).get_iso_fs_dir()
+        self.__initrd_dir = super(CentosDistro, self).get_initrd_dir()
+        self.__src_iso_filename = super(CentosDistro, self).get_src_iso_filename()
+        self.__live_fs_filename = super(CentosDistro, self).get_live_fs_filename()
+        self.__online = super(CentosDistro, self).get_online()
+        self.__run_post_config = super(CentosDistro, self).get_run_post_config()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
 
