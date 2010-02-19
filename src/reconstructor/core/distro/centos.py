@@ -39,7 +39,7 @@ class CentosDistro(BaseDistro):
         super(CentosDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
         self.log = logging.getLogger('CentosDistro')
         # set live fs filename
-        super(CentosDistro, self).set_live_fs_filename(os.path.join(super(FedoraDistro, self).get_iso_fs_dir(), 'LiveOS' + os.sep + 'squashfs.img'))
+        super(CentosDistro, self).set_live_fs_filename(os.path.join(super(CentosDistro, self).get_iso_fs_dir(), 'LiveOS' + os.sep + 'squashfs.img'))
         # set local vars
         self.__arch = super(CentosDistro, self).get_arch()
         self.__work_dir = super(CentosDistro, self).get_work_dir()
