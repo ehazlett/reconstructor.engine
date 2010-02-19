@@ -185,6 +185,8 @@ class DebianDistro(BaseDistro):
                 for p in packages:
                     if p.find('java') > 0:
                         java_version = p[p.find('java')+4]
+                # TODO: FIX: temporarily remove sun-java6-doc package as it's just a meta package and it halts the build server
+                pkg_list = pkg_list.replace('sun-java6-doc', '')
                 # create java license bypass script
                 jv = java_version
                 # HACK: set the bypass for java 5,6 - will halt package installation if a package relies on java...
