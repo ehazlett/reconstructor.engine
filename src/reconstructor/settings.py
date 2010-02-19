@@ -32,8 +32,8 @@ import commands
 LOG_LEVEL=logging.DEBUG
 APP_NAME="Reconstructor Engine"
 APP_AUTHOR="Lumentica"
-APP_VERSION='3.2.1'
-APP_DEV_REV='20100217'
+APP_VERSION='3.2.2'
+APP_DEV_REV='20100219'
 APP_CODENAME=''
 APP_COPYRIGHT="%s %s (c) %s, %s" % (APP_NAME, str(APP_VERSION), APP_AUTHOR, str(date.today().year))
 APP_URL='https://build.reconstructor.org'

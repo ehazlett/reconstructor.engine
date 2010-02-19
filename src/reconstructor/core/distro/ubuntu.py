@@ -55,6 +55,7 @@ class UbuntuDistro(BaseDistro):
         # check working dirs
         self.check_working_dirs()
     
+
     def extract_live_fs(self):
         '''Extracts squashfs_filename to self.__squashfs_dir'''
         try:

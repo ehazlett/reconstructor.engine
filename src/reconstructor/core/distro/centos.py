@@ -87,6 +87,9 @@ class CentosDistro(BaseDistro):
             #shutil.rmtree(tmpdir)
 
     def update_boot_kernel(self):
+        # skip for now
+        #self.log.info('Not yet implemented...')
+        return True
         try:
             f = os.listdir('%s' % (os.path.join(self.__live_fs_dir, 'boot')))
             for k in f:
@@ -108,7 +111,7 @@ class CentosDistro(BaseDistro):
             tmpSquashDir = tmpImgDir + os.sep + 'LiveOS'
             tmpMntDir = tempfile.mkdtemp()
             os.makedirs(tmpSquashDir)
-            os.system('dd if=/dev/zero of=%s/ext3fs.img bs=1M count=0 seek=4096' % (tmpSquashDir))
+            os.system('dd if=/dev/zero of=%s/ext3fs.img bs=1M count=0 seek=8192' % (tmpSquashDir))
             os.system('mkfs.ext3 -F %s' % (os.path.join(tmpSquashDir, 'ext3fs.img')))
             # mount
             fs_tools.mount(os.path.join(tmpSquashDir, 'ext3fs.img'), tmpMntDir)
@@ -134,8 +137,9 @@ class CentosDistro(BaseDistro):
             shutil.rmtree(tmpImgDir)
     
     def extract_initrd(self):
-        self.log.error('Not implemented...')
-        return
+        # skip for now
+        #self.log.error('Not implemented...')
+        return True
         try:
             self.log.debug('Extracting initial ramdisk...')
             if not os.path.exists(self.__initrd_dir):
@@ -148,8 +152,9 @@ class CentosDistro(BaseDistro):
             return False
 
     def build_initrd(self):
-        self.log.error('Not implemented...')
-        return
+        # skip for now
+        #self.log.error('Not implemented...')
+        return True
         try:
             self.log.debug('Building initial ramdisk...')
             initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')
@@ -161,32 +166,8 @@ class CentosDistro(BaseDistro):
             return False
 
     def add_packages(self, packages=None):
-        self.log.error('Not implemented...')
-        return
         try:
-            # add all package repositories
-            sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
-            f = open(sources_cfg, 'r')
-            cfg = f.read().split('\n')
-            f.close()
-            new_cfg = ''
-            # enable repos
-            for l in cfg:
-                if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                else:
-                    new_cfg += l + '\n'
-            f = open(sources_cfg, 'w')
-            f.write(new_cfg)
-            f.close()
-
-            # create 'apt-get install' package list
+            # create 'yum install' package list
             pkg_list = ''
             dpkg_pkgs = ''
             if len(packages) > 0:
@@ -203,11 +184,11 @@ class CentosDistro(BaseDistro):
                 f = open(scr_file, 'w')
                 if self.__online:
                     if settings.APT_CACHER_ADDRESS != '':
-                        f.write('#!/bin/sh\n# Reconstructor package install script\nexport http_proxy=http://%s\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (settings.APT_CACHER_ADDRESS, pkg_list))
+                        f.write('#!/bin/sh\n# Reconstructor package install script\nexport http_proxy=http://%s\nrm -rf /var/lib/rpm/__db*\nrpm --rebuilddb\nyum -y --skip-broken install %s\nyum -y clean all\n' % (settings.APT_CACHER_ADDRESS, pkg_list))
                     else:
-                        f.write('#!/bin/sh\n# Reconstructor package install script\n\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
+                        f.write('#!/bin/sh\n# Reconstructor package install script\n\nrm -rf /var/lib/rpm/__db*\nrpm --rebuilddb\nyum -y --skip-broken install %s\nyum -y clean all\n' % (pkg_list))
                 else:
-                    f.write('#!/bin/sh\n# Reconstructor package install script\n\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
+                    f.write('#!/bin/sh\n# Reconstructor package install script\n\nrm -rf /var/lib/rpm/__db*\nrpm --rebuilddb\nyum -y --skip-broken install %s\nyum -y clean all\n' % (pkg_list))
                 f.close()
                 # make script executable
                 os.chmod(scr_file, 0775)
@@ -218,36 +199,7 @@ class CentosDistro(BaseDistro):
                 os.remove(os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh'))
                 # post config
                 if self.__run_post_config and type(p) is type({}):
-                    # check for X -- if so use xterm for config
-                    post_cfg = os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'r_post_cfg.sh')
-                    if os.path.exists(os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'X')):
-                        self.log.debug('Using xterm for Post Config...')
-                        f = open(post_cfg, 'w')
-                        f.write('# Reconstructor Post Configuration Script\n#\n\nUSER=`who | head -n 1 | awk \'{print $1}\'`\nXRUN=`ps aux | grep X | wc -l`\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"\nStarting Reconstructor Post Configuration...\"; sleep 5; if [ `runlevel | awk \'{print $2}\'` = \"2\" ]; then  sleep 5; sudo -u $USER xterm -display :0 -title \"Reconstructor Package Configuration\" -e \"sudo dpkg-reconfigure %s\"; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi; fi\n\n' % (dpkg_pkgs))
-                        f.close()
-                    else:
-                        self.log.debug('Using terminal for Post Config...')
-                        f = open(post_cfg, 'w')
-                        f.write('\n\n# Reconstructor Post Configuration\n\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"Starting Reconstructor Post Configuration\" ; sleep 1 ; dpkg-reconfigure %s; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi\n' % (dpkg_pkgs))
-                        f.close()
-                
-                    # make executable
-                    os.chmod(post_cfg, 0775)
-
-                    # add post config to rc.local
-                    cfg = ''
-                    f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'r')
-                    o = f.read()
-                    f.close()
-                    for l in o.split('\n'):
-                        if l.find('exit') > -1:
-                            cfg += '/usr/bin/r_post_cfg.sh \nexit 0\n'
-                            break
-                        else:
-                            cfg += l + '\n'
-                    f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'w')
-                    f.write(cfg)
-                    f.close()
+                    self.log.debug('Post config not implemented...')
                 
                 # kill all running process to prevent unmount errors
                 self.log.debug('Stopping all running process in chroot...')
