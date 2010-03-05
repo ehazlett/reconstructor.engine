@@ -4,7 +4,7 @@ Architecture: all
 Installed-size: 348
 Section: misc
 Maintainer: Evan Hazlett <evan.hazlett@lumentica.com>
-Depends: python (>= 2.5), squashfs-tools (>= 4.0), genisoimage, syslinux, rsync, psmisc, kpartx, parted, dosfstools, mbr, python-gtk2, gksudo
+Depends: python (>= 2.5), squashfs-tools (>= 4.0), genisoimage, syslinux, rsync, psmisc, kpartx, parted, dosfstools, mbr, python-gtk2, gksu
 Homepage: http://www.reconstructor.org
 Description: Reconstructor Engine
  GNU/Linux customization and creation tool
