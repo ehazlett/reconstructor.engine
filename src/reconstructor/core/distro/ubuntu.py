@@ -152,7 +152,7 @@ class UbuntuDistro(BaseDistro):
             elif os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')):
                 initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')
                 os.remove(initrd)
-                os.system('cd %s; find | cpio -H newc -o | lzma -9 -e > %s' % (self.__initrd_dir, initrd))
+                os.system('cd %s; find . | cpio --quiet --dereference -o -H newc | lzma -7 > %s' % (self.__initrd_dir, initrd))
                 return True
         except Exception, d:
             self.log.error('Error building initrd: %s' % (d))
