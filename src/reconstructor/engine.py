@@ -338,8 +338,7 @@ def main(engine=None, gui=None):
                 eng.run_script(prj.get_post_script())
     
             # teardown customization environment
-            if PROJECT:
-                eng.teardown_environment()
+            eng.teardown_environment()
         
             # build initrd if requested
             if not opts.skip_initrd_create:
@@ -885,7 +884,7 @@ class BuildEngine(object):
             # unmount anything left
             self.log.debug('Unmounting any left over mounts...')
             # remove project dir if needed
-            if os.path.exists(self.__distro.get_project_dir()):
+            if PROJECT and os.path.exists(self.__distro.get_project_dir()):
                 self.log.debug('Removing temporary project dir...')
                 shutil.rmtree(self.__distro.get_project_dir())
             # get lvm name
@@ -905,6 +904,8 @@ class BuildEngine(object):
                         os.system('umount -f %s' % (m.split(' ')[1]))
 
         except Exception, d:
+            import traceback
+            traceback.print_exc()
             self.log.error('Error tearing down environment: %s' % (d))
 
 

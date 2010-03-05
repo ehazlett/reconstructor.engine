@@ -1,0 +1,4 @@
+Version 3.2.4
+    * fixed bug with /proc and /dev/pts not being unmounted properly
+
+
