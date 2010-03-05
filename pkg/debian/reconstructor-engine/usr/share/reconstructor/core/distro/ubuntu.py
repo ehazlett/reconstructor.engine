@@ -55,6 +55,7 @@ class UbuntuDistro(BaseDistro):
         # check working dirs
         self.check_working_dirs()
     
+
     def extract_live_fs(self):
         '''Extracts squashfs_filename to self.__squashfs_dir'''
         try:
@@ -148,10 +149,10 @@ class UbuntuDistro(BaseDistro):
                 os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (self.__initrd_dir, initrd))
                 return True
             # check for initrd.lz
-            elif os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.gz')):
+            elif os.path.exists(os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')):
                 initrd = os.path.join(self.__iso_fs_dir, 'casper'+os.sep+'initrd.lz')
                 os.remove(initrd)
-                os.system('cd %s; find | cpio -H newc -o | lzma -9 -e > %s' % (self.__initrd_dir, initrd))
+                os.system('cd %s; find . | cpio --quiet --dereference -o -H newc | lzma -7 > %s' % (self.__initrd_dir, initrd))
                 return True
         except Exception, d:
             self.log.error('Error building initrd: %s' % (d))
@@ -204,7 +205,7 @@ class UbuntuDistro(BaseDistro):
                 # for java 5
                 java_bypass = 'sun-java5-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre sun-java5-jre/stopthread boolean true\nsun-java5-jre sun-java5-jre/jcepolicy note\nsun-java5-bin shared/present-sun-dlj-v1-1 note\nsun-java5-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
                 # for java 6
-                java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
+                java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-doc shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
                 # create temp script
                 scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
                 f = open(scr_file, 'w')

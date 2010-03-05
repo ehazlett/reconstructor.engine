@@ -50,7 +50,7 @@ from reconstructor import settings
 from reconstructor.core import fs_tools
 from reconstructor.core import iso_tools
 from reconstructor.core import squash_tools
-from reconstructor.core.distro import ubuntu, ubuntu_ec2, fedora, debian
+from reconstructor.core.distro import ubuntu, ubuntu_ec2, centos, debian
 from reconstructor.config import Project
 
 # logging vars
@@ -307,6 +307,11 @@ def main(engine=None, gui=None):
                 if ONLINE:
                     update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
                 eng.add_packages()
+            else:
+                eng.setup_environment()
+            # add additional packages
+            if PACKAGES:
+                eng.add_packages(PACKAGES)    
 
             # enable persistent
             if PERSISTENT_SIZE != None:
@@ -375,7 +380,8 @@ def main(engine=None, gui=None):
             if ONLINE:
                 log.info('Final size: %s MB' % (os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576))
             else:
-                log.info('Final size: %s MB' % (os.path.getsize(prj_filename) / 1048576))
+                if prj_filename:
+                    log.info('Final size: %s MB' % (os.path.getsize(prj_filename) / 1048576))
             # copy build log
             if ONLINE:
                 log_filename = '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))
@@ -634,7 +640,7 @@ class BuildEngine(object):
         self.log = logging.getLogger('BuildEngine')
         #self.log.debug('%s, %s, %s, %s, %s, %s, %s, %s' % (distro, arch, description, working_dir, src_iso_filename, project, lvm_name, output_file))
         self.log.debug('Engine initialized...')
-        self.__all_distros = ['ubuntu','fedora','debian',]
+        self.__all_distros = ['ubuntu','centos','debian',]
         self.__arch = arch
         self.__distro_name = distro.lower()
         self.log.debug('Distro: %s Arch: %s' % (self.__distro_name, self.__arch))
@@ -691,8 +697,8 @@ class BuildEngine(object):
                     self.log.debug('Loading Live project...')
                     if distro_name == 'ubuntu':
                         self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
-                    elif distro_name == 'fedora':
-                        self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                    elif distro_name == 'centos':
+                        self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                     elif distro_name == 'debian':
                         self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                     else:
@@ -709,8 +715,8 @@ class BuildEngine(object):
             else:
                 if distro_name == 'ubuntu':
                     self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
-                elif distro_name == 'fedora':
-                    self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                elif distro_name == 'centos':
+                    self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
                 elif distro_name == 'debian':
                     self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
 
@@ -722,6 +728,16 @@ class BuildEngine(object):
         
     def extract_live_fs(self):
         self.log.info('Extracting Live filesystem... Please wait...')
+        # check squashfs tools
+        mk_s = commands.getoutput('%s -version' % (MKSQUASHFS))
+        un_s = commands.getoutput('%s -version' % (UNSQUASHFS))
+        mk_ver = Decimal(mk_s.split('\n')[0].split(None, 4)[2])
+        un_ver = Decimal(un_s.split('\n')[0].split(None, 4)[2])
+        # check
+        if DISTRO_TYPE == 'ubuntu':
+            self.log.info('You must have SquashFS tools 3.3+ for Ubuntu 9.04 and 4.0+ for Ubuntu 9.10...')
+        elif DISTRO_TYPE == 'centos':
+            self.log.info('You must have SquashFS tools 3.4 for CentOS 5.4...')
         return self.__distro.extract_live_fs()
     
     def create_disk_image(self, size='10', dest_file=None, image_type=None, distro_name=''):
@@ -768,7 +784,8 @@ class BuildEngine(object):
         if packages:
             return self.__distro.add_packages(packages=packages)
         else:
-            return self.__distro.add_packages(packages=self.__project.packages)
+            if self.__project:
+                return self.__distro.add_packages(packages=self.__project.packages)
     
     def run_modules(self):
         try:
@@ -1232,6 +1249,7 @@ def launch_gui():
 
 # main
 if __name__ == '__main__':
+    print('\n%s (c) %s, 2010  %s\n' % ('Reconstructor Engine', 'Lumentica', 'http://www.lumentica.com'))
     PROJECT = None
     DISTRO_TYPE=None
     ARCH=None
@@ -1247,6 +1265,7 @@ if __name__ == '__main__':
     ONLINE=False
     MKSQUASHFS=None
     UNSQUASHFS=None
+    PACKAGES=None
     # cli options
     op = OptionParser()
     op.add_option('-g', '--gui', dest='launch_gui', action="store_true", default=False, help='Start the Reconstructor Engine GUI')
@@ -1257,6 +1276,7 @@ if __name__ == '__main__':
     op.add_option('-i', '--iso-filename', dest='iso_filename', help='Source Ubuntu ISO filename')
     op.add_option('-v', '--description', dest='description', help='ISO description')
     op.add_option('-l', '--lvm', dest='lvm_name', help='Use LVM device as source')
+    op.add_option('--packages', dest='additional_packages', help='Comma separated list of additional packages to add to distro')
     op.add_option('--queue', dest='queue', action="store_true", default=False, help='Start Reconstructor Queue watcher for online jobs')
     op.add_option('--keep-lvm', dest='keep_lvm', action="store_true", default=False, help='Do not remove temporary LVM volume')
     op.add_option('--install-only', dest='install_only', action="store_true", default=False, help='Skip extraction and build; Do install only')
@@ -1352,9 +1372,8 @@ if __name__ == '__main__':
             MKSQUASHFS = commands.getoutput('which mksquashfs')
         if UNSQUASHFS == None:
             UNSQUASHFS = commands.getoutput('which unsquashfs')
-    
         log.debug('SquashFS Tools: %s, %s' % (MKSQUASHFS, UNSQUASHFS))
-
+        
         # check for queue watcher
         if opts.queue:
             start_queue_watcher()
@@ -1404,6 +1423,9 @@ if __name__ == '__main__':
         # persistent size
         if opts.persistent_size != None:
             PERSISTENT_SIZE=opts.persistent_size
+        # additional packages
+        if opts.additional_packages:
+            PACKAGES = opts.additional_packages.split(',')
         # run
         main()
         sys.exit(0)

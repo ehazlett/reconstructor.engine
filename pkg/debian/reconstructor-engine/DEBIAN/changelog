@@ -1,3 +1,7 @@
+reconstructor-engine (3.2.3) karmic; urgency=medium
+
+    * Fixed initrd build bug for Ubuntu 9.10+
+
 reconstructor-engine (3.2.0) karmic; urgency=low
 
     * Version 3.2.0 adds UI support

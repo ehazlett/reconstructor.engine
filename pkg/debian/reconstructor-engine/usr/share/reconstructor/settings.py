@@ -28,20 +28,20 @@ import logging
 import commands
 
 # app vars
-#LOG_LEVEL=logging.INFO
-LOG_LEVEL=logging.DEBUG
+LOG_LEVEL=logging.INFO
+#LOG_LEVEL=logging.DEBUG
 APP_NAME="Reconstructor Engine"
 APP_AUTHOR="Lumentica"
-APP_VERSION='3.2'
-APP_DEV_REV='20100201'
+APP_VERSION='3.2.3'
+APP_DEV_REV='20100305.1'
 APP_CODENAME=''
 APP_COPYRIGHT="%s %s (c) %s, %s" % (APP_NAME, str(APP_VERSION), APP_AUTHOR, str(date.today().year))
 APP_URL='https://build.reconstructor.org'
 SITE_URL='http://www.reconstructor.org'
 HELP_URL=SITE_URL + '/wiki/reconstructor/EngineUserGuide'
 LVM_ROOT='/dev/rec'
-ONLINE_ISO_REPO='/mnt/rec_images/volatile'
-QUEUE_URL='https://build.reconstructor.org/queue/next'
+ONLINE_ISO_REPO=''
+QUEUE_URL=''
 QUEUE_CHECK_INTERVAL = 10 # seconds
 MINIMUM_BUILD_FREE_SPACE = 2.0 # minimum space needed for online build (in GB)
 REPO_DOWNLOAD_URL='' # TODO: remove -- not used anymore
