@@ -265,11 +265,155 @@ def main(engine=None, gui=None):
             eng = engine
         else:
             eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, working_dir=WORKING_DIR, src_iso_filename=SRC_ISO_FILE, project=PROJECT, lvm_name=LVM_NAME, output_file=OUTPUT_FILE, build_type=BUILD_TYPE)
-        # live project
-        if eng.get_project() == None or eng.get_project().project_type == 'live':
-            log.info('Running live project...')
-            prj_filename = None
-            if ONLINE:
+        if BUILD_TYPE == 'live':
+            # live project
+            if eng.get_project() == None or eng.get_project().project_type == 'live':
+                log.info('Building live disc...')
+                log.info('Running live project...')
+                prj_filename = None
+                if ONLINE:
+                    # check iso repo
+                    check_iso_repo()
+                    # update web app with status and server
+                    prj = eng.get_project()
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='building')
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Starting...')
+        
+                # set project_dir for distro
+                if PROJECT:
+                    eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
+        
+                if not opts.lvm_name and eng.get_src_iso_filename():
+                    # extract ISO if requested
+                    if opts.skip_iso_extract == False:
+                        eng.extract_iso()
+                    else:
+                        log.info('Skipping ISO extraction...')
+                    # extract SquashFs if requested
+                    if opts.skip_livefs_extract == False:
+                        eng.extract_live_fs()
+                    else:
+                        log.info('Skipping LiveFS filesystem extraction...')
+                    # extract initrd if requested
+                    if opts.skip_initrd_extract == False:
+                        eng.extract_initrd()
+                    else:
+                        log.info('Skipping Initrd extraction...')
+                
+                if PROJECT:
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
+                    # setup customization environment
+                    eng.setup_environment()
+                    # add packages
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
+                    eng.add_packages()
+                else:
+                    eng.setup_environment()
+                # add additional packages
+                if PACKAGES:
+                    eng.add_packages(PACKAGES)    
+    
+                # enable persistent
+                if PERSISTENT_SIZE != None:
+                    eng.enable_persistent(size=PERSISTENT_SIZE)
+                # add custom app
+                if CUSTOM_APP != None:
+                    eng.add_tar_app(CUSTOM_APP, dest_dir='/opt')
+                # extract project data into root
+                if PROJECT:
+                    if eng.get_project().project_type.lower() == 'live':
+                        eng.add_project_data()
+                # run modules
+                if PROJECT:
+                    log.debug('Running modules...')
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running modules...')
+                    eng.run_modules()
+                # run scripts
+                if PROJECT:
+                    log.debug('Running scripts...')
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
+                    prj = eng.get_project()
+                    eng.run_script(prj.get_post_script())
+        
+                # teardown customization environment
+                eng.teardown_environment()
+            
+                # build initrd if requested
+                if not opts.skip_initrd_create:
+                    if eng.get_project() == None or eng.get_project().project_type == 'live':
+                        if ONLINE:
+                            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building initial ramdisk...')
+                        eng.build_initrd()
+        
+                # update kernel
+                eng.update_kernel()
+    
+                # build live fs if requested
+                if opts.no_build == False:
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
+                    eng.build_live_fs()
+                else:
+                    log.info('Skipping build of live filesystem...')
+            
+                if ONLINE or OUTPUT_FILE and not opts.skip_iso_create:
+                    ptype = 'iso'
+                    if PROJECT:
+                        if eng.get_project().environment.strip().lower() == 'netbook':
+                            ptype = 'netbook'
+                    log.info('Building image...')
+                    if ptype == 'netbook':
+                        if ONLINE:
+                            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
+                        # TODO: finish build netbook image
+                        self.log.error('Not implemented...')
+                    elif ptype == 'iso':
+                        log.info('Building ISO...')
+                        if ONLINE:
+                            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building ISO...')
+                        if eng.create_iso():
+                            log.info('ISO build complete.')
+                            prj_filename = eng.get_output_filename()
+                if ONLINE:
+                    log.info('Final size: %s MB' % (os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576))
+                else:
+                    if prj_filename:
+                        log.info('Final size: %s MB' % (os.path.getsize(prj_filename) / 1048576))
+                # copy build log
+                if ONLINE:
+                    log_filename = '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))
+                    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
+                log.info('Done.')
+                # update UI if running
+                if gui:
+                    gui.build_complete()
+                
+                # post status if online
+                if ONLINE:
+                    prj = eng.get_project()
+                    filename = None
+                    # get size of project (in MB)
+                    file_size = int(os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576)
+                    #if settings.REPO_DOWNLOAD_URL.endswith('/'):
+                    #    file_link = settings.REPO_DOWNLOAD_URL + prj_filename
+                    #else:
+                    #    file_link = settings.REPO_DOWNLOAD_URL + '/' + prj_filename
+                    # only send filename -- downloads now handled with django
+                    filename = prj_filename
+    
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', filename=filename, version=prj.version, download_key=eng.get_download_key(), log_filename=log_filename, file_size=file_size)
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
+    
+            # ec2 project
+            elif eng.get_project().project_type == 'ec2':
+                if not ONLINE:
+                    log.error('EC2 projects can only be run from the Reconstructor Build Service...')
+                    sys.exit(1)
+                log.info('Running EC2 project...')
                 # check iso repo
                 check_iso_repo()
                 # update web app with status and server
@@ -277,330 +421,205 @@ def main(engine=None, gui=None):
                 update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='building')
                 update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Starting...')
     
-            # set project_dir for distro
-            if PROJECT:
+                # set project_dir for distro
                 eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
-    
-            if not opts.lvm_name and eng.get_src_iso_filename():
-                # extract ISO if requested
-                if opts.skip_iso_extract == False:
-                    eng.extract_iso()
-                else:
-                    log.info('Skipping ISO extraction...')
-                # extract SquashFs if requested
-                if opts.skip_livefs_extract == False:
-                    eng.extract_live_fs()
-                else:
-                    log.info('Skipping LiveFS filesystem extraction...')
-                # extract initrd if requested
-                if opts.skip_initrd_extract == False:
-                    eng.extract_initrd()
-                else:
-                    log.info('Skipping Initrd extraction...')
-            
-            if PROJECT:
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
+                
                 # setup customization environment
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
                 eng.setup_environment()
                 # add packages
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
                 eng.add_packages()
-            else:
-                eng.setup_environment()
+                # add public ssh credentials
+                eng.add_ssh_credentials()
+                
+                log.debug('EC2 environment; running scripts...')
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
+                prj = eng.get_project()
+                eng.run_script(prj.get_post_script())
+        
+                # build ami
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
+                prefix = eng.get_project().name.lower().replace(' ', '_')
+                cert = os.path.join(eng.get_project().get_tmpdir(), 'files' + os.sep + eng.get_project().aws_cert)
+                key = os.path.join(eng.get_project().get_tmpdir(), 'files' + os.sep + eng.get_project().aws_key)
+                id = eng.get_project().aws_id
+                s3_bucket = eng.get_project().aws_s3_bucket
+                s3_id = eng.get_project().aws_s3_access_id
+                s3_key = eng.get_project().aws_s3_access_key
+    
+                # build
+                eng.build_ec2_ami(prefix=prefix, cert=cert, key=key, id=id)
+                
+                # upload
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Uploading...')
+                eng.upload_ec2_ami(prefix=prefix, s3_id=s3_id, s3_key=s3_key, s3_bucket=s3_bucket)
+    
+                # teardown customization environment
+                eng.teardown_environment()
+    
+                # copy build.log
+                shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))))
+                # finish
+                log.info('EC2 build complete.')
+    
+                # update job status
+                prj = eng.get_project()
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', verion=prj.version)
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
+    
+            # disk image project
+            elif eng.get_project().project_type == 'disk':
+                log.info('Running disk image project...')
+                prj_filename = None
+                if ONLINE:
+                    # check iso repo
+                    check_iso_repo()
+                    # update web app with status and server
+                    prj = eng.get_project()
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='building')
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Starting...')
+        
+                # set project_dir for distro
+                if PROJECT:
+                    eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
+        
+                if not opts.lvm_name and eng.get_src_iso_filename():
+                    # extract ISO if requested
+                    if opts.skip_iso_extract == False:
+                        eng.extract_iso()
+                    else:
+                        log.info('Skipping ISO extraction...')
+                    # extract SquashFs if requested
+                    if opts.skip_livefs_extract == False:
+                        eng.extract_live_fs()
+                    else:
+                        log.info('Skipping Squash filesystem extraction...')
+                    # extract initrd if requested
+                    if opts.skip_initrd_extract == False:
+                        eng.extract_initrd()
+                    else:
+                        log.info('Skipping Initrd extraction...')
+                
+                if PROJECT:
+                    # setup customization environment
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
+                    eng.setup_environment()
+                    # add packages
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
+                    eng.add_packages()
+                    # install grub if needed
+                    ptype = eng.get_project().disk_image_type
+                    if ptype == 'qemu' or ptype == 'vmware':
+                        p = ['grub',]
+                        eng.add_packages(packages=p)
+    
+                # enable persistent
+                if PERSISTENT_SIZE != None:
+                    eng.enable_persistent(size=PERSISTENT_SIZE)
+                # add custom app
+                if CUSTOM_APP != None:
+                    eng.add_tar_app(CUSTOM_APP, dest_dir='/opt')
+                # extract project data into root
+                if PROJECT:
+                    eng.add_project_data()
+                # run modules
+                if PROJECT:
+                    log.debug('Running modules...')
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running modules...')
+                    eng.run_modules()
+                # run scripts
+                if PROJECT:
+                    log.debug('Running scripts...')
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
+                    prj = eng.get_project()
+                    eng.run_script(prj.get_post_script())
+        
+                # teardown customization environment
+                eng.teardown_environment()
+            
+                if prj:
+                    if prj.online:
+                        img = os.path.join(tempfile.gettempdir(), prj.name.replace(' ', '_') + '_' + prj.author.lower() + '.img')
+                    else:
+                        img = self.__output_file
+                else:
+                    img = self.__output_file
+                # create
+                img_size = '5'
+                if prj.disk_image_size:
+                    img_size = prj.disk_image_size
+                
+                # build live fs if requested
+                if opts.no_build == False:
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
+                    eng.build_live_fs()
+                else:
+                    log.info('Skipping build of live filesystem...')
+    
+                prj_filename = eng.create_disk_image(size=img_size, dest_file=img, image_type=prj.disk_image_type, distro_name=eng.get_project().distro)
+                log.debug('Compressing image...')
+                if ONLINE:
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Compressing image...')
+                os.system('gzip -f -2 %s' % (os.path.join(tempfile.gettempdir(), prj_filename)))
+                prj_filename += '.gz'
+                
+                if ONLINE:
+                    log.debug('Moving to online repo...')
+                    if os.path.exists(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)):
+                        log.debug('Removing existing image...')
+                        os.remove(os.path.join(settings.ONLINE_ISO_REPO, prj_filename))
+                    shutil.move(os.path.join(tempfile.gettempdir(), prj_filename), os.path.join(settings.ONLINE_ISO_REPO, prj_filename))
+                
+                log.info('Done.')
+    
+                # copy build log
+                if ONLINE:
+                    log_filename = '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))
+                    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
+                    
+                # post status if online
+                if ONLINE:
+                    prj = eng.get_project()
+                    filename = None
+                    file_size = int(os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576)
+                    #if settings.REPO_DOWNLOAD_URL.endswith('/'):
+                    #    file_link = settings.REPO_DOWNLOAD_URL + prj_filename
+                    #else:
+                    #    file_link = settings.REPO_DOWNLOAD_URL + '/' + prj_filename
+                    # only send filename - django handles downloads
+                    filename = prj_filename
+                    
+                    log.debug('Project filename: %s' % (prj_filename))
+                    log.debug('Filename: %s' % (filename))
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', filename=filename, version=prj.version, download_key=eng.get_download_key(), log_filename=log_filename, file_size=file_size)
+                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
+                log.info('Build complete...')
+                if gui:
+                    gui.send_stats()
+        elif BUILD_TYPE == 'alternate':
+            # build alternate (install) disc
+            log.info('Building alternate (install) disc...')
+            # extract
+            log.info('Extracting ISO...')
+            if opts.skip_iso_extract == False:
+                eng.extract_iso()
             # add additional packages
             if PACKAGES:
                 eng.add_packages(PACKAGES)    
-
-            # enable persistent
-            if PERSISTENT_SIZE != None:
-                eng.enable_persistent(size=PERSISTENT_SIZE)
-            # add custom app
-            if CUSTOM_APP != None:
-                eng.add_tar_app(CUSTOM_APP, dest_dir='/opt')
-            # extract project data into root
-            if PROJECT:
-                if eng.get_project().project_type.lower() == 'live':
-                    eng.add_project_data()
-            # run modules
-            if PROJECT:
-                log.debug('Running modules...')
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running modules...')
-                eng.run_modules()
-            # run scripts
-            if PROJECT:
-                log.debug('Running scripts...')
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
-                prj = eng.get_project()
-                eng.run_script(prj.get_post_script())
-    
-            # teardown customization environment
-            eng.teardown_environment()
-        
-            # build initrd if requested
-            if not opts.skip_initrd_create:
-                if eng.get_project() == None or eng.get_project().project_type == 'live':
-                    if ONLINE:
-                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building initial ramdisk...')
-                    eng.build_initrd()
-    
-            # update kernel
-            eng.update_kernel()
-
-            # build live fs if requested
-            if opts.no_build == False:
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
-                eng.build_live_fs()
-            else:
-                log.info('Skipping build of live filesystem...')
-        
-            if ONLINE or OUTPUT_FILE and not opts.skip_iso_create:
-                ptype = 'iso'
-                if PROJECT:
-                    if eng.get_project().environment.strip().lower() == 'netbook':
-                        ptype = 'netbook'
-                log.info('Building image...')
-                if ptype == 'netbook':
-                    if ONLINE:
-                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
-                    # TODO: finish build netbook image
-                    self.log.error('Not implemented...')
-                elif ptype == 'iso':
-                    log.info('Building ISO...')
-                    if ONLINE:
-                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building ISO...')
-                    if eng.create_iso():
-                        log.info('ISO build complete.')
-                        prj_filename = eng.get_output_filename()
-            if ONLINE:
-                log.info('Final size: %s MB' % (os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576))
-            else:
-                if prj_filename:
-                    log.info('Final size: %s MB' % (os.path.getsize(prj_filename) / 1048576))
-            # copy build log
-            if ONLINE:
-                log_filename = '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))
-                shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
-            log.info('Done.')
-            # update UI if running
-            if gui:
-                gui.build_complete()
-            
-            # post status if online
-            if ONLINE:
-                prj = eng.get_project()
-                filename = None
-                # get size of project (in MB)
-                file_size = int(os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576)
-                #if settings.REPO_DOWNLOAD_URL.endswith('/'):
-                #    file_link = settings.REPO_DOWNLOAD_URL + prj_filename
-                #else:
-                #    file_link = settings.REPO_DOWNLOAD_URL + '/' + prj_filename
-                # only send filename -- downloads now handled with django
-                filename = prj_filename
-
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', filename=filename, version=prj.version, download_key=eng.get_download_key(), log_filename=log_filename, file_size=file_size)
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
-
-        # ec2 project
-        elif eng.get_project().project_type == 'ec2':
-            if not ONLINE:
-                log.error('EC2 projects can only be run from the Reconstructor Build Service...')
-                sys.exit(1)
-            log.info('Running EC2 project...')
-            # check iso repo
-            check_iso_repo()
-            # update web app with status and server
-            prj = eng.get_project()
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='building')
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Starting...')
-
-            # set project_dir for distro
-            eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
-            
-            # setup customization environment
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
-            eng.setup_environment()
-            # add packages
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
-            eng.add_packages()
-            # add public ssh credentials
-            eng.add_ssh_credentials()
-            
-            log.debug('EC2 environment; running scripts...')
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
-            prj = eng.get_project()
-            eng.run_script(prj.get_post_script())
-    
-            # build ami
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
-            prefix = eng.get_project().name.lower().replace(' ', '_')
-            cert = os.path.join(eng.get_project().get_tmpdir(), 'files' + os.sep + eng.get_project().aws_cert)
-            key = os.path.join(eng.get_project().get_tmpdir(), 'files' + os.sep + eng.get_project().aws_key)
-            id = eng.get_project().aws_id
-            s3_bucket = eng.get_project().aws_s3_bucket
-            s3_id = eng.get_project().aws_s3_access_id
-            s3_key = eng.get_project().aws_s3_access_key
-
             # build
-            eng.build_ec2_ami(prefix=prefix, cert=cert, key=key, id=id)
-            
-            # upload
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Uploading...')
-            eng.upload_ec2_ami(prefix=prefix, s3_id=s3_id, s3_key=s3_key, s3_bucket=s3_bucket)
-
-            # teardown customization environment
-            eng.teardown_environment()
-
-            # copy build.log
-            shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))))
-            # finish
-            log.info('EC2 build complete.')
-
-            # update job status
-            prj = eng.get_project()
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', verion=prj.version)
-            update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
-
-        # disk image project
-        elif eng.get_project().project_type == 'disk':
-            log.info('Running disk image project...')
-            prj_filename = None
-            if ONLINE:
-                # check iso repo
-                check_iso_repo()
-                # update web app with status and server
-                prj = eng.get_project()
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='building')
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Starting...')
-    
-            # set project_dir for distro
-            if PROJECT:
-                eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
-    
-            if not opts.lvm_name and eng.get_src_iso_filename():
-                # extract ISO if requested
-                if opts.skip_iso_extract == False:
-                    eng.extract_iso()
-                else:
-                    log.info('Skipping ISO extraction...')
-                # extract SquashFs if requested
-                if opts.skip_livefs_extract == False:
-                    eng.extract_live_fs()
-                else:
-                    log.info('Skipping Squash filesystem extraction...')
-                # extract initrd if requested
-                if opts.skip_initrd_extract == False:
-                    eng.extract_initrd()
-                else:
-                    log.info('Skipping Initrd extraction...')
-            
-            if PROJECT:
-                # setup customization environment
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Setting up environment...')
-                eng.setup_environment()
-                # add packages
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
-                eng.add_packages()
-                # install grub if needed
-                ptype = eng.get_project().disk_image_type
-                if ptype == 'qemu' or ptype == 'vmware':
-                    p = ['grub',]
-                    eng.add_packages(packages=p)
-
-            # enable persistent
-            if PERSISTENT_SIZE != None:
-                eng.enable_persistent(size=PERSISTENT_SIZE)
-            # add custom app
-            if CUSTOM_APP != None:
-                eng.add_tar_app(CUSTOM_APP, dest_dir='/opt')
-            # extract project data into root
-            if PROJECT:
-                eng.add_project_data()
-            # run modules
-            if PROJECT:
-                log.debug('Running modules...')
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running modules...')
-                eng.run_modules()
-            # run scripts
-            if PROJECT:
-                log.debug('Running scripts...')
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Running post-script...')
-                prj = eng.get_project()
-                eng.run_script(prj.get_post_script())
-    
-            # teardown customization environment
-            eng.teardown_environment()
-        
-            if prj:
-                if prj.online:
-                    img = os.path.join(tempfile.gettempdir(), prj.name.replace(' ', '_') + '_' + prj.author.lower() + '.img')
-                else:
-                    img = self.__output_file
-            else:
-                img = self.__output_file
-            # create
-            img_size = '5'
-            if prj.disk_image_size:
-                img_size = prj.disk_image_size
-            
-            # build live fs if requested
-            if opts.no_build == False:
-                if ONLINE:
-                    update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Building image...')
-                eng.build_live_fs()
-            else:
-                log.info('Skipping build of live filesystem...')
-
-            prj_filename = eng.create_disk_image(size=img_size, dest_file=img, image_type=prj.disk_image_type, distro_name=eng.get_project().distro)
-            log.debug('Compressing image...')
-            if ONLINE:
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Compressing image...')
-            os.system('gzip -f -2 %s' % (os.path.join(tempfile.gettempdir(), prj_filename)))
-            prj_filename += '.gz'
-            
-            if ONLINE:
-                log.debug('Moving to online repo...')
-                if os.path.exists(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)):
-                    log.debug('Removing existing image...')
-                    os.remove(os.path.join(settings.ONLINE_ISO_REPO, prj_filename))
-                shutil.move(os.path.join(tempfile.gettempdir(), prj_filename), os.path.join(settings.ONLINE_ISO_REPO, prj_filename))
-            
-            log.info('Done.')
-
-            # copy build log
-            if ONLINE:
-                log_filename = '%s_%s.log' % (eng.get_project().name.replace(' ', '_'), eng.get_project().author.replace(' ', '_'))
-                shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
-                
-            # post status if online
-            if ONLINE:
-                prj = eng.get_project()
-                filename = None
-                file_size = int(os.path.getsize(os.path.join(settings.ONLINE_ISO_REPO, prj_filename)) / 1048576)
-                #if settings.REPO_DOWNLOAD_URL.endswith('/'):
-                #    file_link = settings.REPO_DOWNLOAD_URL + prj_filename
-                #else:
-                #    file_link = settings.REPO_DOWNLOAD_URL + '/' + prj_filename
-                # only send filename - django handles downloads
-                filename = prj_filename
-                
-                log.debug('Project filename: %s' % (prj_filename))
-                log.debug('Filename: %s' % (filename))
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='status', value='complete', filename=filename, version=prj.version, download_key=eng.get_download_key(), log_filename=log_filename, file_size=file_size)
-                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Done')
-            log.info('Build complete...')
-            if gui:
-                gui.send_stats()
-
+            if OUTPUT_FILE and not opts.skip_iso_create:
+                log.info('Building ISO...')
+                if eng.create_iso():
+                    log.info('ISO build complete.')
+                    prj_filename = eng.get_output_filename()
+        else:
+            log.error('Unknown build type: %s' % (build_type))
 
     except Exception, d:
         log.error(d)
@@ -666,7 +685,7 @@ class BuildEngine(object):
         #self.log.debug('Download Key: %s  Log Key: %s' % (download_key, log_key))
         # load
         if self.__project:
-            self.load_distro(arch=self.__arch, distro_name=self.__distro_name, working_dir=self.__working_dir, src_iso_filename=src_iso_filename)
+            self.load_distro(arch=self.__arch, distro_name=self.__distro_name, working_dir=self.__working_dir, src_iso_filename=src_iso_filename, build_type=self.__build_type)
             self.__description = self.__project.name
             self.__run_post_config = self.__project.run_post_config
         else:
@@ -714,11 +733,11 @@ class BuildEngine(object):
                         sys.exit(1)
             else:
                 if distro_name == 'ubuntu':
-                    self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                    self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                 elif distro_name == 'centos':
-                    self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                    self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                 elif distro_name == 'debian':
-                    self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                    self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
 
             self.log.info('Build Distribution: %s' % (distro_name))
      

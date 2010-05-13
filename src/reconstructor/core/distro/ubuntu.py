@@ -35,7 +35,7 @@ import shutil
 class UbuntuDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
         # call base distro __init__
-        super(UbuntuDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config, build_type=None)
+        super(UbuntuDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config, build_type=build_type)
         self.log = logging.getLogger('UbuntuDistro')
         # set live fs filename
         super(UbuntuDistro, self).set_live_fs_filename(os.path.join(super(UbuntuDistro, self).get_iso_fs_dir(), 'casper' + os.sep + 'filesystem.squashfs'))
@@ -55,7 +55,6 @@ class UbuntuDistro(BaseDistro):
 
         # check working dirs
         self.check_working_dirs()
-    
 
     def extract_live_fs(self):
         '''Extracts squashfs_filename to self.__squashfs_dir'''
