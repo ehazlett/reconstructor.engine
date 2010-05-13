@@ -31,6 +31,7 @@ import logging
 import tempfile
 import os
 import shutil
+import subprocess
 
 class UbuntuDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
@@ -264,8 +265,44 @@ class UbuntuDistro(BaseDistro):
                         os.system('fuser -km %s' % (self.__live_fs_dir))
                     # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
             elif self.__build_type == 'alternate':
-                # add packages to alt disc
-                self.log.error('Not complete...')
+                if len(packages) > 0:
+                    pkg_list = ''
+                    if type(packages) is type({}):
+                        for p in packages:
+                            #pkg_list += '%s=%s ' % (p, packages[p])
+                            pkg_list += '%s ' % (p)
+                            dpkg_pkgs += '%s ' % (p)
+                    else:
+                        for p in packages:
+                            pkg_list += '%s ' % (p)
+                    distro_ver = None
+                    # add packages to alt disc
+                    # find 'release' version
+                    if not os.path.exists(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')):
+                        self.log.error('Unable to find release version for distro...')
+                        return False
+                    f = open(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info'), 'r')
+                    ver = f.read()
+                    f.close()
+                    # find ubuntu codename
+                    distro_ver = ver.split()[2].replace('"', '').lower()
+                    self.log.info('Getting packages for %s' % (distro_ver.capitalize()))
+                    # create temp sources file
+                    tmp_conf = tempfile.mktemp()
+                    tmp_pkgs_dir = tempfile.mkdtemp()
+                    f = open(tmp_conf, 'w')
+                    self.log.debug('Creating temporary APT config...')
+                    f.write('deb http://archive.ubuntu.com/ubuntu %s main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu %s-updates main restricted universe multiverse' % (distro_ver, distro_ver))
+                    f.close()
+                    self.log.debug('Getting packages: %s' % (pkg_list))
+                    p = subprocess.Popen('apt-get -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -o Dir::Etc::SourceList=%s -o Dir::Etc::SourceParts=/dev/null update 2>&1 > /dev/null; apt-get -o Dir::Cache=%s -o Dir::Cache::Archives=%s -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -y --download-only -f install %s ' % (tmp_conf, tmp_pkgs_dir, tmp_pkgs_dir, pkg_list), shell=True)
+                    os.waitpid(p.pid, 0)
+    
+                    # run apt-get update again to restore system config
+                    p = subprocess.Popen('apt-get -q update 2>&1 > /dev/null', shell=True)
+                    os.waitpid(p.pid, 0)
+                    self.log.error('Not complete...')
+
             else:
                 self.log.error('Unsupported build type: %s' % (self.__build_type))
         except Exception, d:
