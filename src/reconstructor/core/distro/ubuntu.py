@@ -33,9 +33,9 @@ import os
 import shutil
 
 class UbuntuDistro(BaseDistro):
-    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None):
+    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
         # call base distro __init__
-        super(UbuntuDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
+        super(UbuntuDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config, build_type=None)
         self.log = logging.getLogger('UbuntuDistro')
         # set live fs filename
         super(UbuntuDistro, self).set_live_fs_filename(os.path.join(super(UbuntuDistro, self).get_iso_fs_dir(), 'casper' + os.sep + 'filesystem.squashfs'))
@@ -49,8 +49,10 @@ class UbuntuDistro(BaseDistro):
         self.__live_fs_filename = super(UbuntuDistro, self).get_live_fs_filename()
         self.__online = super(UbuntuDistro, self).get_online()
         self.__run_post_config = super(UbuntuDistro, self).get_run_post_config()
+        self.__build_type = super(UbuntuDistro, self).get_build_type()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
+        self.__live = live
 
         # check working dirs
         self.check_working_dirs()
@@ -160,108 +162,114 @@ class UbuntuDistro(BaseDistro):
 
     def add_packages(self, packages=None):
         try:
-            # add all package repositories
-            sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
-            f = open(sources_cfg, 'r')
-            cfg = f.read().split('\n')
-            f.close()
-            new_cfg = ''
-            # enable repos
-            for l in cfg:
-                if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
-                    new_cfg += l[2:] + '\n'
-                else:
-                    new_cfg += l + '\n'
-            f = open(sources_cfg, 'w')
-            f.write(new_cfg)
-            f.close()
+            if self.__build_type == 'live':
+                # add all package repositories
+                sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
+                f = open(sources_cfg, 'r')
+                cfg = f.read().split('\n')
+                f.close()
+                new_cfg = ''
+                # enable repos
+                for l in cfg:
+                    if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
+                        new_cfg += l[2:] + '\n'
+                    elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
+                        new_cfg += l[2:] + '\n'
+                    elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
+                        new_cfg += l[2:] + '\n'
+                    elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
+                        new_cfg += l[2:] + '\n'
+                    else:
+                        new_cfg += l + '\n'
+                f = open(sources_cfg, 'w')
+                f.write(new_cfg)
+                f.close()
 
-            # create 'apt-get install' package list
-            pkg_list = ''
-            dpkg_pkgs = ''
-            java_version = None
-            if len(packages) > 0:
-                if type(packages) is type({}):
+                # create 'apt-get install' package list
+                pkg_list = ''
+                dpkg_pkgs = ''
+                java_version = None
+                if len(packages) > 0:
+                    if type(packages) is type({}):
+                        for p in packages:
+                            #pkg_list += '%s=%s ' % (p, packages[p])
+                            pkg_list += '%s ' % (p)
+                            dpkg_pkgs += '%s ' % (p)
+                    else:
+                        for p in packages:
+                            pkg_list += '%s ' % (p)
+                    # check for java
                     for p in packages:
-                        #pkg_list += '%s=%s ' % (p, packages[p])
-                        pkg_list += '%s ' % (p)
-                        dpkg_pkgs += '%s ' % (p)
-                else:
-                    for p in packages:
-                        pkg_list += '%s ' % (p)
-                # check for java
-                for p in packages:
-                    if p.find('java') > 0:
-                        java_version = p[p.find('java')+4]
-                # create java license bypass script
-                jv = java_version
-                # HACK: set the bypass for java 5,6 - will halt package installation if a package relies on java...
-                # for java 5
-                java_bypass = 'sun-java5-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre sun-java5-jre/stopthread boolean true\nsun-java5-jre sun-java5-jre/jcepolicy note\nsun-java5-bin shared/present-sun-dlj-v1-1 note\nsun-java5-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
-                # for java 6
-                java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-doc shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
-                # create temp script
-                scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
-                f = open(scr_file, 'w')
-                if self.__online:
-                    if settings.APT_CACHER_ADDRESS != '':
-                        f.write('#!/bin/sh\n# Reconstructor package install script\nexport http_proxy=http://%s\necho \'%s\' | debconf-set-selections\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (settings.APT_CACHER_ADDRESS, java_bypass, pkg_list))
+                        if p.find('java') > 0:
+                            java_version = p[p.find('java')+4]
+                    # create java license bypass script
+                    jv = java_version
+                    # HACK: set the bypass for java 5,6 - will halt package installation if a package relies on java...
+                    # for java 5
+                    java_bypass = 'sun-java5-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre sun-java5-jre/stopthread boolean true\nsun-java5-jre sun-java5-jre/jcepolicy note\nsun-java5-bin shared/present-sun-dlj-v1-1 note\nsun-java5-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
+                    # for java 6
+                    java_bypass += 'sun-java6-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-doc shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java6-jre sun-java6-jre/stopthread boolean true\nsun-java6-jre sun-java6-jre/jcepolicy note\nsun-java6-bin shared/present-sun-dlj-v1-1 note\nsun-java6-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
+                    # create temp script
+                    scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
+                    f = open(scr_file, 'w')
+                    if self.__online:
+                        if settings.APT_CACHER_ADDRESS != '':
+                            f.write('#!/bin/sh\n# Reconstructor package install script\nexport http_proxy=http://%s\necho \'%s\' | debconf-set-selections\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (settings.APT_CACHER_ADDRESS, java_bypass, pkg_list))
+                        else:
+                            f.write('#!/bin/sh\n# Reconstructor package install script\necho \'%s\' | debconf-set-selections\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (java_bypass, pkg_list))
                     else:
                         f.write('#!/bin/sh\n# Reconstructor package install script\necho \'%s\' | debconf-set-selections\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (java_bypass, pkg_list))
-                else:
-                    f.write('#!/bin/sh\n# Reconstructor package install script\necho \'%s\' | debconf-set-selections\napt-get update\nDEBIAN_FRONTEND=noninteractive apt-get install -f -y --force-yes %s\n\napt-get clean\napt-get autoclean\n\n' % (java_bypass, pkg_list))
-                f.close()
-                # make script executable
-                os.chmod(scr_file, 0775)
-                self.log.debug('Package list: %s' % (pkg_list))
-                # install
-                os.system('chroot %s /tmp/pkgs.sh' % (self.__live_fs_dir))
-                # cleanup
-                os.remove(os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh'))
-                # post config
-                if self.__run_post_config and type(p) is type({}):
-                    # check for X -- if so use xterm for config
-                    post_cfg = os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'r_post_cfg.sh')
-                    if os.path.exists(os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'X')):
-                        self.log.debug('Using xterm for Post Config...')
-                        f = open(post_cfg, 'w')
-                        f.write('# Reconstructor Post Configuration Script\n#\n\nUSER=`who | head -n 1 | awk \'{print $1}\'`\nXRUN=`ps aux | grep X | wc -l`\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"\nStarting Reconstructor Post Configuration...\"; sleep 5; if [ `runlevel | awk \'{print $2}\'` = \"2\" ]; then  sleep 5; sudo -u $USER xterm -display :0 -title \"Reconstructor Package Configuration\" -e \"sudo dpkg-reconfigure %s\"; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi; fi\n\n' % (dpkg_pkgs))
-                        f.close()
-                    else:
-                        self.log.debug('Using terminal for Post Config...')
-                        f = open(post_cfg, 'w')
-                        f.write('\n\n# Reconstructor Post Configuration\n\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"Starting Reconstructor Post Configuration\" ; sleep 1 ; dpkg-reconfigure %s; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi\n' % (dpkg_pkgs))
-                        f.close()
-                
-                    # make executable
-                    os.chmod(post_cfg, 0775)
-
-                    # add post config to rc.local
-                    cfg = ''
-                    f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'r')
-                    o = f.read()
                     f.close()
-                    for l in o.split('\n'):
-                        if l.find('exit') > -1:
-                            cfg += '/usr/bin/r_post_cfg.sh \nexit 0\n'
-                            break
+                    # make script executable
+                    os.chmod(scr_file, 0775)
+                    self.log.debug('Package list: %s' % (pkg_list))
+                    # install
+                    os.system('chroot %s /tmp/pkgs.sh' % (self.__live_fs_dir))
+                    # cleanup
+                    os.remove(os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh'))
+                    # post config
+                    if self.__run_post_config and type(p) is type({}):
+                        # check for X -- if so use xterm for config
+                        post_cfg = os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'r_post_cfg.sh')
+                        if os.path.exists(os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'bin' + os.sep + 'X')):
+                            self.log.debug('Using xterm for Post Config...')
+                            f = open(post_cfg, 'w')
+                            f.write('# Reconstructor Post Configuration Script\n#\n\nUSER=`who | head -n 1 | awk \'{print $1}\'`\nXRUN=`ps aux | grep X | wc -l`\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"\nStarting Reconstructor Post Configuration...\"; sleep 5; if [ `runlevel | awk \'{print $2}\'` = \"2\" ]; then  sleep 5; sudo -u $USER xterm -display :0 -title \"Reconstructor Package Configuration\" -e \"sudo dpkg-reconfigure %s\"; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi; fi\n\n' % (dpkg_pkgs))
+                            f.close()
                         else:
-                            cfg += l + '\n'
-                    f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'w')
-                    f.write(cfg)
-                    f.close()
-                
-                # kill all running process to prevent unmount errors
-                self.log.debug('Stopping all running process in chroot...')
-                if self.__online:
-                    os.system('fuser -km %s' % (self.__live_fs_dir))
-                # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
+                            self.log.debug('Using terminal for Post Config...')
+                            f = open(post_cfg, 'w')
+                            f.write('\n\n# Reconstructor Post Configuration\n\nif [ ! -f /usr/share/reconstructor/postcfg_run ]; then  echo \"Starting Reconstructor Post Configuration\" ; sleep 1 ; dpkg-reconfigure %s; mkdir -p /usr/share/reconstructor; touch /usr/share/reconstructor/postcfg_run; fi\n' % (dpkg_pkgs))
+                            f.close()
+                    
+                        # make executable
+                        os.chmod(post_cfg, 0775)
+
+                        # add post config to rc.local
+                        cfg = ''
+                        f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'r')
+                        o = f.read()
+                        f.close()
+                        for l in o.split('\n'):
+                            if l.find('exit') > -1:
+                                cfg += '/usr/bin/r_post_cfg.sh \nexit 0\n'
+                                break
+                            else:
+                                cfg += l + '\n'
+                        f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'rc.local'), 'w')
+                        f.write(cfg)
+                        f.close()
+                    
+                    # kill all running process to prevent unmount errors
+                    self.log.debug('Stopping all running process in chroot...')
+                    if self.__online:
+                        os.system('fuser -km %s' % (self.__live_fs_dir))
+                    # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
+            elif self.__build_type == 'alternate':
+                # add packages to alt disc
+                self.log.error('Not complete...')
+            else:
+                self.log.error('Unsupported build type: %s' % (self.__build_type))
         except Exception, d:
             self.log.error('Error adding packages: %s' % (d))
             return False

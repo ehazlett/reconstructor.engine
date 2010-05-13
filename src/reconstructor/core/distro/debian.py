@@ -33,9 +33,9 @@ import os
 import shutil
 
 class DebianDistro(BaseDistro):
-    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None):
+    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
         # call base distro __init__
-        super(DebianDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
+        super(DebianDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config, build_type=build_type)
         self.log = logging.getLogger('DebianDistro')
         # set live fs filename
         super(DebianDistro, self).set_live_fs_filename(os.path.join(super(DebianDistro, self).get_iso_fs_dir(), 'live' + os.sep + 'filesystem.squashfs'))
@@ -49,6 +49,7 @@ class DebianDistro(BaseDistro):
         self.__live_fs_filename = super(DebianDistro, self).get_live_fs_filename()
         self.__online = super(DebianDistro, self).get_online()
         self.__run_post_config = super(DebianDistro, self).get_run_post_config()
+        self.__build_type = super(DebianDistro, self).get_build_type()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
 

@@ -39,7 +39,7 @@ from reconstructor.core import fs_tools
 
 class BaseDistro(object):
     '''Base class for all distributions.'''
-    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=False, run_post_config=True):
+    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=False, run_post_config=True, build_type=None):
         self.log = logging.getLogger('BaseDistro')
         self.__arch = arch
         self.__work_dir = working_dir
@@ -51,6 +51,7 @@ class BaseDistro(object):
         self.__project_dir = None
         self.__online = online
         self.__run_post_config = run_post_config
+        self.__build_type = build_type
 
     # accessors
     def get_arch(self): return self.__arch
@@ -71,7 +72,8 @@ class BaseDistro(object):
     def set_initrd_dir(self, newValue): self.__initrd_dir = newValue
     def set_project_dir(self, newValue): self.__project_dir = newValue
     def set_live_fs_filename(self, newValue): self.__live_fs_filename = newValue
-    
+    def get_build_type(self): return self.__build_type
+
     # methods
     def watch_process(self, process=None):
         if process:

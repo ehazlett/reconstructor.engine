@@ -264,7 +264,7 @@ def main(engine=None, gui=None):
         if engine:
             eng = engine
         else:
-            eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, working_dir=WORKING_DIR, src_iso_filename=SRC_ISO_FILE, project=PROJECT, lvm_name=LVM_NAME, output_file=OUTPUT_FILE)
+            eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, working_dir=WORKING_DIR, src_iso_filename=SRC_ISO_FILE, project=PROJECT, lvm_name=LVM_NAME, output_file=OUTPUT_FILE, build_type=BUILD_TYPE)
         # live project
         if eng.get_project() == None or eng.get_project().project_type == 'live':
             log.info('Running live project...')
@@ -634,7 +634,7 @@ def main(engine=None, gui=None):
         
 class BuildEngine(object):
     '''Master Reconstructor Build Engine'''
-    def __init__(self, distro=None, arch=None, description=None, working_dir=None, src_iso_filename=None, project=None, lvm_name=None, output_file=None):
+    def __init__(self, distro=None, arch=None, description=None, working_dir=None, src_iso_filename=None, project=None, lvm_name=None, output_file=None, build_type=None):
         # configure logging
         self.log = logging.getLogger('BuildEngine')
         #self.log.debug('%s, %s, %s, %s, %s, %s, %s, %s' % (distro, arch, description, working_dir, src_iso_filename, project, lvm_name, output_file))
@@ -644,6 +644,7 @@ class BuildEngine(object):
         self.__distro_name = distro.lower()
         self.log.debug('Distro: %s Arch: %s' % (self.__distro_name, self.__arch))
         self.__output_file = output_file
+        self.__build_type = build_type
         if description:
             self.__description = description
         else:
@@ -669,7 +670,7 @@ class BuildEngine(object):
             self.__description = self.__project.name
             self.__run_post_config = self.__project.run_post_config
         else:
-            self.load_distro(arch=self.__arch, distro_name=distro, working_dir=self.__working_dir, src_iso_filename=src_iso_filename)
+            self.load_distro(arch=self.__arch, distro_name=distro, working_dir=self.__working_dir, src_iso_filename=src_iso_filename, build_type=self.__build_type)
             self.__run_post_config = False
     
     # accessors
@@ -1277,6 +1278,7 @@ if __name__ == '__main__':
     op.add_option('-i', '--iso-filename', dest='iso_filename', help='Source Ubuntu ISO filename')
     op.add_option('-v', '--description', dest='description', help='ISO description')
     op.add_option('-l', '--lvm', dest='lvm_name', help='Use LVM device as source')
+    op.add_option('--build-type', dest='build_type', default='live', help='Type of distro to build; e.g. live, alternate')
     op.add_option('--packages', dest='additional_packages', help='Comma separated list of additional packages to add to distro')
     op.add_option('--queue', dest='queue', action="store_true", default=False, help='Start Reconstructor Queue watcher for online jobs')
     op.add_option('--keep-lvm', dest='keep_lvm', action="store_true", default=False, help='Do not remove temporary LVM volume')
@@ -1427,6 +1429,11 @@ if __name__ == '__main__':
         # additional packages
         if opts.additional_packages:
             PACKAGES = opts.additional_packages.split(',')
+        # check for distro type
+        if opts.build_type.lower() != 'live' and opts.distro_type.lower() != 'ubuntu':
+            log.error('Only \'live\' distro types are supported for non-Ubuntu distros...')
+            sys.exit(1)
+        BUILD_TYPE = opts.build_type.lower() 
         # run
         main()
         sys.exit(0)
