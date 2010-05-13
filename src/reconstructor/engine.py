@@ -685,7 +685,7 @@ class BuildEngine(object):
     def get_download_key(self): return self.__download_key
     def get_log_key(self): return self.__log_key
     
-    def load_distro(self, arch=None, distro_name=None, working_dir=None, src_iso_filename=None):
+    def load_distro(self, arch=None, distro_name=None, working_dir=None, src_iso_filename=None, build_type=None):
         if distro_name.strip().lower() not in self.__all_distros:
             self.log.error('Distribution %s not valid. Available distros: %s' % (distro_name, self.__all_distros))
             sys.exit(1)
@@ -696,11 +696,11 @@ class BuildEngine(object):
                 if ptype == 'live' or ptype == 'disk':
                     self.log.debug('Loading Live project...')
                     if distro_name == 'ubuntu':
-                        self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                        self.__distro = ubuntu.UbuntuDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                     elif distro_name == 'centos':
-                        self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                        self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                     elif distro_name == 'debian':
-                        self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS)
+                        self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                     else:
                         self.log.error('Unknown distro for live or disk project...')
                         sys.exit(1)

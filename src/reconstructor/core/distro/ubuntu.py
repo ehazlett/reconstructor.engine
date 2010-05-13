@@ -52,7 +52,6 @@ class UbuntuDistro(BaseDistro):
         self.__build_type = super(UbuntuDistro, self).get_build_type()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
-        self.__live = live
 
         # check working dirs
         self.check_working_dirs()
