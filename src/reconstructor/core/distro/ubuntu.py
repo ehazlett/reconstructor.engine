@@ -295,7 +295,7 @@ class UbuntuDistro(BaseDistro):
                     f.write('deb http://archive.ubuntu.com/ubuntu %s main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu %s-updates main restricted universe multiverse' % (distro_ver, distro_ver))
                     f.close()
                     self.log.debug('Getting packages: %s' % (pkg_list))
-                    p = subprocess.Popen('apt-get -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -o Dir::Etc::SourceList=%s -o Dir::Etc::SourceParts=/dev/null update 2>&1 > /dev/null; apt-get -o Dir::Cache=%s -o Dir::Cache::Archives=%s -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -y --download-only -f install %s ' % (tmp_conf, tmp_pkgs_dir, tmp_pkgs_dir, pkg_list), shell=True)
+                    p = subprocess.Popen('apt-get -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -o Dir::Etc::SourceList=%s -o Dir::Etc::SourceParts=/dev/null update 2>&1 > /dev/null; apt-cache -o Dir::Cache=%s -o Dir::Cache::Archives=%s -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -t %s -d install %s ' % (tmp_conf, tmp_pkgs_dir, tmp_pkgs_dir, distro_ver, pkg_list), shell=True)
                     os.waitpid(p.pid, 0)
     
                     # run apt-get update again to restore system config
