@@ -34,6 +34,9 @@ import shutil
 import subprocess
 import urllib
 import bz2
+import commands
+import getpass
+import tarfile
 
 class UbuntuDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
@@ -160,6 +163,18 @@ class UbuntuDistro(BaseDistro):
         except Exception, d:
             self.log.error('Error building initrd: %s' % (d))
             return False
+
+    def get_gpg_email(self):
+        email = ''
+        while email == '':
+            email = raw_input('Enter GPG key email address: ')
+        return email
+
+    def get_gpg_passphrase(self):
+        pswd = ''
+        while pswd == '':
+            pswd = getpass.getpass('Enter GPG passphrase: ')
+        return pswd
 
     def add_packages(self, packages=None):
         try:
@@ -347,7 +362,8 @@ class UbuntuDistro(BaseDistro):
                         # cleanup
                         os.remove(pkg_bz2)
                         os.remove(pkg_file)
-                    # find and download each package specified
+                    # find and download each package specified as well as ubuntu-keyring source
+                    packages.append('ubuntu-keyring')
                     for p in packages:
                         self.log.debug('Searching for package %s...' % (p))
                         pkg_found = False
@@ -359,7 +375,17 @@ class UbuntuDistro(BaseDistro):
                                 # download package to local repo
                                 pkg_url = l.split()[1]
                                 self.log.debug('Downloading %s...' % (p))
-                                urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/%s' % pkg_url, filename=os.path.join(tmp_dir, pkg_url.split('/')[-1]))
+                                if p == 'ubuntu-keyring':
+                                    self.log.debug('Getting ubuntu-keyring source...')
+                                    pkg_url = pkg_url.replace('_all.deb', '.tar.gz')
+                                    urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/%s' % pkg_url, filename=os.path.join(tmp_dir, pkg_url.split('/')[-1]))
+                                    # extract ubuntu-keyring source
+                                    self.log.debug('Extracting ubuntu-keyring source...')
+                                    t = tarfile.open(os.path.join(tmp_dir, pkg_url.split('/')[-1]))
+                                    t.extractall(path=tmp_dir)
+                                    t.close()
+                                else:
+                                    urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/%s' % pkg_url, filename=os.path.join(tmp_dir, pkg_url.split('/')[-1]))
                             if pkg_found and l.find('Description') > -1:
                                 break
                         if not pkg_found:
@@ -379,6 +405,75 @@ class UbuntuDistro(BaseDistro):
                     f = open(os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'extras' + os.sep + 'binary-' + distro_arch + os.sep + 'Release'), 'w')
                     f.write('Archive: %s\nVersion: %s\nComponent: extras\nOrigin: Ubuntu\nLabel: Ubuntu\nArchitecture: %s\n' % (distro_codename, distro_version, distro_arch))
                     f.close()
+                    # generate GPG key
+                    key_name = 'Alternate Installation Automatic Signing Key'
+                    key_comment = 'Reconstructor Signing Key'
+                    output = commands.getoutput('gpg --list-keys | grep \'%s\'' % (key_name))
+                    if output != '':
+                        self.log.debug('GPG key found...')
+                    else:
+                        self.log.debug('No GPG key found; creating...')
+                        key_email = self.get_gpg_email()
+                        key_passphrase = self.get_gpg_passphrase()
+                        key = 'Key-Type: DSA\nKey-Length: 1024\nSubkey-Type: ELG-E\nSubkey-Length: 2048\nName-Real: %s\nName-Comment: %s\nName-Email: %s\nExpire-Date: 0\nPassphrase: %s' % (key_name, key_comment, key_email, key_passphrase)
+                        f = open(os.path.join(tmp_dir, 'gpg.key'), 'w')
+                        f.write(key)
+                        f.close()
+                        # create key
+                        self.log.debug('Generating GPG key...')
+                        p = subprocess.Popen('gpg --gen-key --batch %s > /dev/null' % (os.path.join(tmp_dir, 'gpg.key')), shell=True)
+                        os.waitpid(p.pid, 0)
+                        # reset permissions for user
+                        p = subprocess.Popen('chown -R %s %s/.gnupg/' % (os.getlogin(), os.environ['HOME']), shell=True)
+                        os.waitpid(p.pid, 0)
+
+                    # import gpg key
+                    for d in os.listdir(tmp_dir):
+                        if d.find('ubuntu-keyring') > -1:
+                            self.log.debug('Importing Ubuntu key...')
+                            ubuntu_keyring_file = os.path.join(tmp_dir, d + os.sep + 'keyrings' + os.sep + 'ubuntu-archive-keyring.gpg')
+                            p = subprocess.Popen('gpg --import %s' % (ubuntu_keyring_file), shell=True)
+                            os.waitpid(p.pid, 0)
+                            # export custom gpg key
+                            self.log.debug('Exporting custom GPG key...')
+                            # remove existing
+                            os.remove(ubuntu_keyring_file)
+                            p = subprocess.Popen('gpg --output=%s --export \"%s\" 2>&1 > /dev/null' % (ubuntu_keyring_file, key_name), shell=True)
+                            os.waitpid(p.pid, 0)
+                            # build new ubuntu-keyring package
+                            self.log.debug('Building keyring package...')
+                            p = subprocess.Popen('cd %s ; dpkg-buildpackage -rfakeroot -m\"Reconstructor <info@reconstructor.org>\" -k\"%s\" > /dev/null' % (os.path.join(tmp_dir, d), key_name), shell=True)
+                            os.waitpid(p.pid, 0)
+                            # copy package to pool
+                            main_pool_dir = os.path.join(self.__iso_fs_dir, 'pool' + os.sep + 'main' + os.sep + 'u' + os.sep + 'ubuntu-keyring')
+                            for p in os.listdir(main_pool_dir):
+                                self.log.debug('Removing existing ubuntu-keyring package: %s' % (p))
+                                os.remove(os.path.join(main_pool_dir, p))
+                            for p in os.listdir(tmp_dir):
+                                if p.find('ubuntu-keyring') > -1:
+                                    if p.find('deb') > -1:
+                                        # copy to main pool
+                                        self.log.debug('Copying %s to main pool...' % (p))
+                                        shutil.copy(os.path.join(tmp_dir, p), os.path.join(main_pool_dir, p))
+                            break
+                    # build the repo
+                    index_dir = os.path.join(tmp_dir, 'indices')
+                    ftparchive_dir = os.path.join(tmp_dir, 'apt-ftparchive')
+                    os.makedirs(index_dir)
+                    os.makedirs(ftparchive_dir)
+                    for d in ['extra.main','main','main.debian-installer','restricted','restricted.debian-installer']:
+                        self.log.debug('Getting override: %s...' % (d))
+                        urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/indices/override.%s.%s' % (distro_codename, d), filename=os.path.join(index_dir, 'override.%s.%s' % (distro_codename, d)))
+                    self.log.debug('Generating apt-ftparchive config files...')
+                    # create apt-ftparchive-deb.conf
+                    f = open(os.path.join(ftparchive_dir, 'apt-ftparchive-deb.conf'), 'w')
+                    f.write('Dir {\n\tArchiveDir \"%s/\";\n};\n\nTreeDefault {\n\tDirectory \"pool/\";\n};\n\nBinDirectory \"pool/main\" {\n\tPackages \"dists/%s/main/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.main\";\n\tExtraOverride \"%s/override.%s.extra.main\";\n};\n\nBinDirectory \"pool/restricted\" {\n\tPackages \"dists/%s/restricted/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.restricted\";\n};\n\nDefault {\n\tPackages {\n\t\tExtensions \".deb\";\n\t\tCompress \". gzip\";\n\t};\n};\n\nContents {\n\tCompress \"gzip\";\n};\n ' % (self.__iso_fs_dir, distro_codename, distro_arch, index_dir, distro_codename, index_dir, distro_codename, distro_codename, distro_arch, index_dir, distro_codename))
+                    f.close()
+                    # create apt-ftparchive-udeb.conf
+                    f = open(os.path.join(ftparchive_dir, 'apt-ftparchive-udeb.conf'), 'w')
+                    f.write('Dir {\n\tArchiveDir \"%s/\";\n};\n\nTreeDefault {\n\tDirectory \"pool/\";\n};\n\nBinDirectory \"pool/main\" {\n\tPackages \"dists/%s/main/debian-installer/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.main.debian-installer\";\n};\n\nBinDirectory \"pool/restricted\" {\n\tPackages \"dists/%s/restricted/debian-installer/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.restricted.debian-installer\";\n};\n\nDefault {\n\tPackages {\n\t\tExtensions \".udeb\";\n\t\tCompress \". gzip\";\n\t};\n};\n\nContents {\n\tCompress \"gzip\";\n};\n ' % (self.__iso_fs_dir, distro_codename, distro_arch, index_dir, distro_codename, distro_codename, distro_arch, index_dir, distro_codename ))
+                    f.close()
+                    
                     self.log.error('Not complete...')
 
             else:

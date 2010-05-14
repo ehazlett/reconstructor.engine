@@ -89,7 +89,7 @@ class TextBufferHandler(logging.Handler):
 
 # global functions
 def check_depends():
-    depends = ['mksquashfs', 'genisoimage', 'syslinux', 'rsync', 'fuser', 'kpartx', 'parted', 'mkfs.vfat', 'install-mbr']
+    depends = ['mksquashfs', 'genisoimage', 'syslinux', 'rsync', 'fuser', 'kpartx', 'parted', 'mkfs.vfat', 'install-mbr', 'fakeroot', 'dpkg-buildpackage']
     deps = ''
     for d in depends:
         if commands.getoutput('which %s' % (d)) == '':
@@ -102,6 +102,8 @@ def check_depends():
                 deps += '%s ' % ('dosfstools')
             elif d == 'install-mbr':
                 deps += '%s ' % ('mbr')
+            elif d == 'dpkg-buildpackage':
+                deps += '%s ' % ('dpkg-dev')
             else:
                 deps += '%s ' % (d)
     return deps
