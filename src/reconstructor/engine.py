@@ -1359,6 +1359,7 @@ if __name__ == '__main__':
             else:
                 arch = 'x86'
             if ONLINE:
+                #TODO: remove the LVM setup and replace with standard ISO extraction
                 log.debug('Online project: creating LVM temporary lvm volume...')
                 ptype = PROJECT.project_type.strip().lower()
                 base = ''

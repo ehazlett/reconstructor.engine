@@ -32,6 +32,8 @@ import tempfile
 import os
 import shutil
 import subprocess
+import urllib
+import bz2
 
 class UbuntuDistro(BaseDistro):
     def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
@@ -286,21 +288,51 @@ class UbuntuDistro(BaseDistro):
                     f.close()
                     # find ubuntu codename
                     distro_ver = ver.split()[2].replace('"', '').lower()
-                    self.log.info('Getting packages for %s' % (distro_ver.capitalize()))
+                    distro_arch = ver.split()[6]
+                    self.log.info('Getting package lists for %s' % (distro_ver.capitalize()))
                     # create temp sources file
-                    tmp_conf = tempfile.mktemp()
-                    tmp_pkgs_dir = tempfile.mkdtemp()
-                    f = open(tmp_conf, 'w')
-                    self.log.debug('Creating temporary APT config...')
-                    f.write('deb http://archive.ubuntu.com/ubuntu %s main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu %s-updates main restricted universe multiverse' % (distro_ver, distro_ver))
-                    f.close()
-                    self.log.debug('Getting packages: %s' % (pkg_list))
-                    p = subprocess.Popen('apt-get -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -o Dir::Etc::SourceList=%s -o Dir::Etc::SourceParts=/dev/null update 2>&1 > /dev/null; apt-cache -o Dir::Cache=%s -o Dir::Cache::Archives=%s -o Dir::Etc::Main=/dev/null -o Dir::Etc::Parts=/dev/null -t %s -d install %s ' % (tmp_conf, tmp_pkgs_dir, tmp_pkgs_dir, distro_ver, pkg_list), shell=True)
-                    os.waitpid(p.pid, 0)
-    
-                    # run apt-get update again to restore system config
-                    p = subprocess.Popen('apt-get -q update 2>&1 > /dev/null', shell=True)
-                    os.waitpid(p.pid, 0)
+                    tmp_dir = tempfile.mkdtemp()
+                    # download package lists for each repo
+                    repo_url = 'http://archive.ubuntu.com/ubuntu/dists/%s' % (distro_ver)
+                    pkgs_file = os.path.join(tmp_dir, 'packages')
+                    for x in ['main','restricted','universe','multiverse']:
+                        self.log.debug('Getting %s package list...' % (x))
+                        pkg_bz2 = os.path.join(tmp_dir, '%s_packages.bz2' % (x))
+                        pkg_file = os.path.join(tmp_dir, '%s_packages' % (x))
+                        urllib.urlretrieve('%s/%s/binary-%s/Packages.bz2' % (repo_url, x, distro_arch), filename=pkg_bz2)
+                        # extract
+                        self.log.debug('Extracting...')
+                        b = bz2.BZ2File(pkg_bz2)
+                        f = open(pkg_file, 'w')
+                        f.write(b.read())
+                        f.close()
+                        b.close()
+                        # append pkg_file to pkgs_file
+                        f1 = open(pkg_file, 'r')
+                        f2 = open(pkgs_file, 'a')
+                        f2.write(f1.read())
+                        f1.close()
+                        f2.close()
+                        # cleanup
+                        os.remove(pkg_bz2)
+                        os.remove(pkg_file)
+                    # find and download each package specified
+                    for p in packages:
+                        self.log.debug('Searching for package %s...' % (p))
+                        pkg_found = False
+                        f = open(pkgs_file, 'r')
+                        for l in f.read().split('\n'):
+                            if l.find('Package: %s' % (p)) > -1:
+                                pkg_found = True
+                            if pkg_found and l.find('Filename') > -1:
+                                # download package to local repo
+                                pkg_url = l.split()[1]
+                                self.log.debug('Downloading %s...' % (p))
+                                urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/%s' % pkg_url, filename=os.path.join(tmp_dir, pkg_url.split('/')[-1]))
+                            if pkg_found and l.find('Description') > -1:
+                                break
+                        if not pkg_found:
+                            self.log.warn('Unable to find package: %s' % (p))
                     self.log.error('Not complete...')
 
             else:
