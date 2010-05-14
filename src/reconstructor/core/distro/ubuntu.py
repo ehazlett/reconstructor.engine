@@ -309,7 +309,7 @@ class UbuntuDistro(BaseDistro):
                     f = open(isolinux_cfg_file, 'w')
                     f.write(isolinux_cfg)
                     f.close()
-                    distro_ver = None
+                    distro_codename = None
                     # add packages to alt disc
                     # find 'release' version
                     if not os.path.exists(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')):
@@ -319,11 +319,12 @@ class UbuntuDistro(BaseDistro):
                     ver = f.read()
                     f.close()
                     # find ubuntu codename
-                    distro_ver = ver.split()[2].replace('"', '').lower()
+                    distro_codename = ver.split()[2].replace('"', '').lower()
+                    distro_version = ver.split()[1]
                     distro_arch = ver.split()[6]
-                    self.log.info('Getting package lists for %s' % (distro_ver.capitalize()))
+                    self.log.info('Getting package lists for %s' % (distro_codename.capitalize()))
                     # download package lists for each repo
-                    repo_url = 'http://archive.ubuntu.com/ubuntu/dists/%s' % (distro_ver)
+                    repo_url = 'http://archive.ubuntu.com/ubuntu/dists/%s' % (distro_codename)
                     pkgs_file = os.path.join(tmp_dir, 'packages')
                     for x in ['main','restricted','universe','multiverse']:
                         self.log.debug('Getting %s package list...' % (x))
@@ -363,6 +364,21 @@ class UbuntuDistro(BaseDistro):
                                 break
                         if not pkg_found:
                             self.log.warn('Unable to find package: %s' % (p))
+                    # create 'extras' component
+                    self.log.debug('Creating Extras component...')
+                    extra_pool = os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'extras' + os.sep + 'binary-' + distro_arch + os.sep + 'pool' + os.sep + 'extras')
+                    if not os.path.exists(extra_pool):
+                        os.makedirs(extra_pool)
+                    # copy files
+                    for x in os.listdir(tmp_dir):
+                        if x.find('.deb') > -1:
+                            self.log.debug('Copying %s to extra pool...' % (x))
+                            shutil.copy(os.path.join(tmp_dir, x), os.path.join(extra_pool, x))
+                    # create release file for extras
+                    self.log.debug('Generating Release file...')
+                    f = open(os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'extras' + os.sep + 'binary-' + distro_arch + os.sep + 'Release'), 'w')
+                    f.write('Archive: %s\nVersion: %s\nComponent: extras\nOrigin: Ubuntu\nLabel: Ubuntu\nArchitecture: %s\n' % (distro_codename, distro_version, distro_arch))
+                    f.close()
                     self.log.error('Not complete...')
 
             else:
