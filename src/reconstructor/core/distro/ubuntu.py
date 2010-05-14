@@ -269,6 +269,7 @@ class UbuntuDistro(BaseDistro):
             elif self.__build_type == 'alternate':
                 if len(packages) > 0:
                     pkg_list = ''
+                    tmp_dir = tempfile.mkdtemp()
                     if type(packages) is type({}):
                         for p in packages:
                             #pkg_list += '%s=%s ' % (p, packages[p])
@@ -277,6 +278,11 @@ class UbuntuDistro(BaseDistro):
                     else:
                         for p in packages:
                             pkg_list += '%s ' % (p)
+                    # generate preseed
+                    self.log.debug('Generating preseed...')
+                    f = open(os.path.join(tmp_dir, 'custom.seed'), 'w')
+                    f.write('d-i pkgsel/include %s' % (pkg_list))
+                    f.close()
                     distro_ver = None
                     # add packages to alt disc
                     # find 'release' version
@@ -290,8 +296,6 @@ class UbuntuDistro(BaseDistro):
                     distro_ver = ver.split()[2].replace('"', '').lower()
                     distro_arch = ver.split()[6]
                     self.log.info('Getting package lists for %s' % (distro_ver.capitalize()))
-                    # create temp sources file
-                    tmp_dir = tempfile.mkdtemp()
                     # download package lists for each repo
                     repo_url = 'http://archive.ubuntu.com/ubuntu/dists/%s' % (distro_ver)
                     pkgs_file = os.path.join(tmp_dir, 'packages')
