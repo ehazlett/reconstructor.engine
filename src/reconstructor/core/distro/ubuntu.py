@@ -278,10 +278,36 @@ class UbuntuDistro(BaseDistro):
                     else:
                         for p in packages:
                             pkg_list += '%s ' % (p)
-                    # generate preseed
+                    # generate preseed; append to existing ubuntu.seed if exists
                     self.log.debug('Generating preseed...')
-                    f = open(os.path.join(tmp_dir, 'custom.seed'), 'w')
-                    f.write('d-i pkgsel/include %s' % (pkg_list))
+                    ubuntu_seed_file = os.path.join(self.__iso_fs_dir, 'preseed' + os.sep + 'ubuntu.seed')
+                    ubuntu_seed = None
+                    if os.path.exists(ubuntu_seed_file):
+                        self.log.debug('Using Ubuntu preseed...')
+                        f = open(ubuntu_seed_file, 'r')
+                        ubuntu_seed = f.read()
+                        f.close()
+                    preseed_file = os.path.join(tmp_dir, 'custom.seed')
+                    f = open(preseed_file, 'w')
+                    if ubuntu_seed:
+                        f.write(ubuntu_seed+'\n')
+                    f.write('d-i pkgsel/include %s\n\n' % (pkg_list))
+                    f.close()
+                    # copy to preseed dir
+                    shutil.copy(preseed_file, os.path.join(self.__iso_fs_dir, 'preseed' + os.sep + 'custom.seed'))
+                    # update isolinux
+                    self.log.debug('Updating isolinux configuration...')
+                    isolinux_cfg_file = os.path.join(self.__iso_fs_dir, 'isolinux' + os.sep + 'text.cfg')
+                    isolinux_cfg = ''
+                    f = open(isolinux_cfg_file, 'r')
+                    for l in f.read().split('\n'):
+                        if l.find('ubuntu.seed') > -1:
+                            isolinux_cfg += '%s\n' % (l.replace('ubuntu.seed', 'custom.seed'))
+                        else:
+                            isolinux_cfg += '%s\n' % (l)
+                    f.close()
+                    f = open(isolinux_cfg_file, 'w')
+                    f.write(isolinux_cfg)
                     f.close()
                     distro_ver = None
                     # add packages to alt disc
