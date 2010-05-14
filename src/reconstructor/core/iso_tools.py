@@ -72,8 +72,6 @@ def extract(iso_filename=None, target_dir=None):
 def create(description=None, src_dir=None, dest_file=None):
     if src_dir and dest_file:
         log.info('Creating ISO...')
-        log.debug('ISO info: %s %s' % (description, src_dir))
-        log.debug('Updating md5sums...')
         update_md5sums(src_dir=src_dir)
         os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
         return True
