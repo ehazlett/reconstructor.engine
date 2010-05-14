@@ -392,7 +392,10 @@ class UbuntuDistro(BaseDistro):
                             self.log.warn('Unable to find package: %s' % (p))
                     # create 'extras' component
                     self.log.debug('Creating Extras component...')
-                    extra_pool = os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'extras' + os.sep + 'binary-' + distro_arch + os.sep + 'pool' + os.sep + 'extras')
+                    extra_dist = os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'extras' + os.sep + 'binary-' + distro_arch)
+                    extra_pool = os.path.join(self.__iso_fs_dir, 'pool' + os.sep + 'extras')
+                    if not os.path.exists(extra_dist):
+                        os.makedirs(extra_dist)
                     if not os.path.exists(extra_pool):
                         os.makedirs(extra_pool)
                     # copy files
@@ -473,9 +476,37 @@ class UbuntuDistro(BaseDistro):
                     f = open(os.path.join(ftparchive_dir, 'apt-ftparchive-udeb.conf'), 'w')
                     f.write('Dir {\n\tArchiveDir \"%s/\";\n};\n\nTreeDefault {\n\tDirectory \"pool/\";\n};\n\nBinDirectory \"pool/main\" {\n\tPackages \"dists/%s/main/debian-installer/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.main.debian-installer\";\n};\n\nBinDirectory \"pool/restricted\" {\n\tPackages \"dists/%s/restricted/debian-installer/binary-%s/Packages\";\n\tBinOverride \"%s/override.%s.restricted.debian-installer\";\n};\n\nDefault {\n\tPackages {\n\t\tExtensions \".udeb\";\n\t\tCompress \". gzip\";\n\t};\n};\n\nContents {\n\tCompress \"gzip\";\n};\n ' % (self.__iso_fs_dir, distro_codename, distro_arch, index_dir, distro_codename, distro_codename, distro_arch, index_dir, distro_codename ))
                     f.close()
-                    
-                    self.log.error('Not complete...')
+                    # create apt-ftparchive-extras.conf
+                    f = open(os.path.join(ftparchive_dir, 'apt-ftparchive-extras.conf'), 'w')
+                    f.write('Dir {\n\tArchiveDir \"%s/\";\n};\n\nTreeDefault {\n\tDirectory \"pool/\";\n};\n\nBinDirectory \"pool/extras\" {\n\tPackages \"dists/%s/extras/binary-%s/Packages\";\n};\n\nDefault {\n\tPackages {\n\t\tExtensions \".deb\";\n\t\tCompress \". gzip\";\n\t};\n};\n\nContents {\n\tCompress \"gzip\";\n};\n' % (self.__iso_fs_dir, distro_codename, distro_arch ))
+                    f.close()
+                    # create release.conf
+                    f = open(os.path.join(ftparchive_dir, 'release.conf'), 'w')
+                    f.write('APT::FTPArchive::Release::Origin \"Ubuntu\";\nAPT::FTPArchive::Release::Label \"Ubuntu\";\nAPT::FTPArchive::Release::Suite \"%s\";\nAPT::FTPArchive::Release::Version \"%s\";\nAPT::FTPArchive::Release::Codename \"%s\";\nAPT::FTPArchive::Release::Architectures \"%s\";\nAPT::FTPArchive::Release::Components \"main restricted extras\";\nAPT::FTPArchive::Release::Description \"Ubuntu %s\";\n' % (distro_codename, distro_version, distro_codename, distro_arch, distro_version))
+                    f.close()
 
+                    # create repo
+                    self.log.info('Creating repository...')
+                    ftparchive_conf_file = os.path.join(ftparchive_dir, 'release.conf')
+                    p = subprocess.Popen('apt-ftparchive -c %s generate %s/apt-ftparchive-deb.conf' % (ftparchive_conf_file, ftparchive_dir), shell=True)
+                    os.waitpid(p.pid, 0)
+                    p = subprocess.Popen('apt-ftparchive -c %s generate %s/apt-ftparchive-udeb.conf' % (ftparchive_conf_file, ftparchive_dir), shell=True)
+                    os.waitpid(p.pid, 0)
+                    p = subprocess.Popen('apt-ftparchive -c %s generate %s/apt-ftparchive-extras.conf' % (ftparchive_conf_file, ftparchive_dir), shell=True)
+                    os.waitpid(p.pid, 0)
+                    p = subprocess.Popen('apt-ftparchive -c %s release %s/dists/%s > %s/dists/%s/Release' % (ftparchive_conf_file, self.__iso_fs_dir, distro_codename, self.__iso_fs_dir, distro_codename), shell=True)
+                    os.waitpid(p.pid, 0)
+                    # sign release
+                    self.log.debug('Signing Release...')
+                    release_gpg_file = os.path.join(self.__iso_fs_dir, 'dists' + os.sep + distro_codename + os.sep + 'Release.gpg')
+                    # remove existing release
+                    if os.path.exists(release_gpg_file):
+                        os.remove(release_gpg_file)
+                    p = subprocess.Popen('gpg --default-key \"%s\" --output %s/dists/%s/Release.gpg -ba %s/dists/%s/Release' % (key_name, self.__iso_fs_dir, distro_codename, self.__iso_fs_dir, distro_codename), shell=True)
+                    os.waitpid(p.pid, 0)
+                    # cleanup
+                    shutil.rmtree(tmp_dir)
+                    return True
             else:
                 self.log.error('Unsupported build type: %s' % (self.__build_type))
         except Exception, d:

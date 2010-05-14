@@ -696,6 +696,7 @@ class BuildEngine(object):
     
     # accessors
     def get_work_dir(self): return self.__distro.get_work_dir()
+    def set_arch(self, value): self.__arch == value
     def get_src_iso_filename(self): return self.__distro.get_src_iso_filename()
     def get_live_fs_dir(self): return self.__distro.get_live_fs_dir()
     def get_live_fs_filename(self): return self.__distro.get_live_fs_filename()
@@ -848,11 +849,11 @@ class BuildEngine(object):
             if self.__project.online:
                 # write to file for online version
                 self.__output_file = self.__project.name.replace(' ', '_') + '_' + self.__project.author.replace(' ', '_') + '.iso'
-                return iso_tools.create(arch=self.__arch, description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=os.path.join(settings.ONLINE_ISO_REPO, self.__output_file))
+                return iso_tools.create(description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=os.path.join(settings.ONLINE_ISO_REPO, self.__output_file))
             else:
-                return iso_tools.create(arch=self.__arch, description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=self.__output_file)
+                return iso_tools.create(description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=self.__output_file)
         else:
-            return iso_tools.create(arch=self.__arch, description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=self.__output_file)
+            return iso_tools.create(description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=self.__output_file)
     
     def enable_persistent(self, size=64):
         if self.__distro_name == 'ubuntu':

@@ -69,22 +69,17 @@ def extract(iso_filename=None, target_dir=None):
         if not fs_tools.unmount(tmpMntDir):
             log.error('Error unmounting %s; check log for details...' % (tmpMntDir))
             
-def create(arch=None, description=None, src_dir=None, dest_file=None):
-    if arch and src_dir and dest_file:
+def create(description=None, src_dir=None, dest_file=None):
+    if src_dir and dest_file:
         log.info('Creating ISO...')
-        log.debug('ISO info: %s %s %s' % (arch, description, src_dir))
-        if arch.lower() == 'x86':
-            os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
-            return True
-        elif arch.lower() == 'x86_64' or arch.lower() == 'amd64':
-            os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
-            return True
-        else:
-            log.error('Unable to create iso. Unknown architecture: %s' % (arch))
-            return False
+        log.debug('ISO info: %s %s' % (description, src_dir))
+        log.debug('Updating md5sums...')
+        update_md5sums(src_dir=src_dir)
+        os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
+        return True
     else:
-        log.debug('%s %s %s %s' % (arch, description, src_dir, dest_file))
-        log.error('You must specify architecture type, source directory, and destination file...')
+        log.debug('%s %s %s' % (description, src_dir, dest_file))
+        log.error('You must specify source directory and destination file...')
         return False
 
 def burn():
@@ -92,8 +87,7 @@ def burn():
     
 def update_md5sums(src_dir=None):
     if os.path.exists(src_dir):
-        log.info('Updating MD5 sums...')
-        log.debug('Updating MD5 sums for %s...' % (src_dir))
+        log.info('Updating md5sums...')
         os.system('cd %s ; find . -type f -print0 | xargs -0 md5sum > md5sum.txt' % (src_dir))
         return True
     else:
