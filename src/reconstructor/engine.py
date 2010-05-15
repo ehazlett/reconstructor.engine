@@ -629,8 +629,9 @@ def main(engine=None, gui=None):
                 else:
                     log.error('Preseed file not found: %s' % (PRESEED))
             # build
-            if OUTPUT_FILE and not opts.skip_iso_create:
-                log.info('Building ISO...')
+            if not OUTPUT_FILE:
+                log.info('No output file specified; not creating ISO...')
+            elif OUTPUT_FILE and not opts.skip_iso_create:
                 if eng.create_iso():
                     log.info('ISO build complete.')
                     prj_filename = eng.get_output_filename()
