@@ -361,7 +361,7 @@ class UbuntuDistro(BaseDistro):
                     f.close()
 
                 # build release file for extras - even if no packages were specified on command line
-                if os.path.exists(os.path.join(self.__iso_fs_dir, 'pool' + os.sep + 'extras')):
+                if len(packages) > 0 or os.path.exists(os.path.join(self.__iso_fs_dir, 'pool' + os.sep + 'extras')):
                     # add packages to alt disc
                     self.log.info('Getting package lists for %s...' % (distro_codename))
                     # download package lists for each repo
