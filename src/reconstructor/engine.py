@@ -361,7 +361,15 @@ def main(engine=None, gui=None):
                     eng.build_live_fs()
                 else:
                     log.info('Skipping build of live filesystem...')
-            
+                # add custom preseed
+                if PRESEED:
+                    if os.path.exists(PRESEED):
+                        log.info('Adding custom preseed...')
+                        preseed_file = PRESEED.split('/')[-1]
+                        shutil.copy(PRESEED, os.path.join(eng.get_iso_fs_dir(), 'preseed' + os.sep + preseed_file))
+                    else:
+                        log.error('Preseed file not found: %s' % (PRESEED))
+                # build output
                 if ONLINE or OUTPUT_FILE and not opts.skip_iso_create:
                     ptype = 'iso'
                     if PROJECT:
@@ -608,12 +616,19 @@ def main(engine=None, gui=None):
             # build alternate (install) disc
             log.info('Building alternate (install) disc...')
             # extract
-            log.info('Extracting ISO...')
             if opts.skip_iso_extract == False:
                 eng.extract_iso()
             # add additional packages
             if PACKAGES:
                 eng.add_packages(PACKAGES)    
+            # add custom preseed
+            if PRESEED:
+                if os.path.exists(PRESEED):
+                    log.info('Adding custom preseed: %s' % (PRESEED))
+                    preseed_file = PRESEED.split('/')[-1]
+                    shutil.copy(PRESEED, os.path.join(eng.get_iso_fs_dir(), 'preseed' + os.sep + preseed_file))
+                else:
+                    log.error('Preseed file not found: %s' % (PRESEED))
             # build
             if OUTPUT_FILE and not opts.skip_iso_create:
                 log.info('Building ISO...')
@@ -700,6 +715,7 @@ class BuildEngine(object):
     def get_src_iso_filename(self): return self.__distro.get_src_iso_filename()
     def get_live_fs_dir(self): return self.__distro.get_live_fs_dir()
     def get_live_fs_filename(self): return self.__distro.get_live_fs_filename()
+    def get_iso_fs_dir(self): return self.__distro.get_iso_fs_dir()
     def get_output_filename(self): return self.__output_file
     def get_project(self): return self.__project
     def set_project(self, value): self.__project = value
@@ -1321,6 +1337,7 @@ if __name__ == '__main__':
     op.add_option('-o', '--output-file', dest='output_file', help='Specify output file (.iso)')
     op.add_option('--mksquashfs', dest='mksquashfs', help='Specify mksquashfs path')
     op.add_option('--unsquashfs', dest='unsquashfs', help='Specify unsquashfs path')
+    op.add_option('--preseed', dest='preseed', help='Add custom preseed to ISO')
     #op.add_option('-c', '--config', action='store_true', dest='config', default=False, help='Configure', metavar='CONFIG')
     opts, args = op.parse_args()
     # check for root privledges
@@ -1399,7 +1416,9 @@ if __name__ == '__main__':
         if UNSQUASHFS == None:
             UNSQUASHFS = commands.getoutput('which unsquashfs')
         log.debug('SquashFS Tools: %s, %s' % (MKSQUASHFS, UNSQUASHFS))
-        
+        # set preseed
+        if opts.preseed:
+            PRESEED = opts.preseed
         # check for queue watcher
         if opts.queue:
             start_queue_watcher()
