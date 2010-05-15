@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import urllib
 import bz2
+import gzip
 import commands
 import getpass
 import tarfile
@@ -175,6 +176,23 @@ class UbuntuDistro(BaseDistro):
         while pswd == '':
             pswd = getpass.getpass('Enter GPG passphrase: ')
         return pswd
+    
+    def get_dependencies(self, package=None, packages_file=None):
+        pkgs = []
+        pkg_found = False
+        f = open(packages_file, 'r')
+        for l in f.read().split('\n'):
+            if l.find('Package: %s' % (package)) > -1:
+                pkg_found = True
+            if pkg_found and l.find('Depends') > -1:
+                s = l.split('Depends:')[1]
+                for p in s.split(','):
+                    pname = p.split()[0]
+                    if pname not in pkgs:
+                        pkgs.append(pname)
+            if pkg_found and l.find('Description') > -1:
+                break
+        return pkgs
 
     def add_packages(self, packages=None):
         try:
@@ -364,6 +382,43 @@ class UbuntuDistro(BaseDistro):
                         os.remove(pkg_file)
                     # find and download each package specified as well as ubuntu-keyring source
                     packages.append('ubuntu-keyring')
+                    # load base package list from local repository
+                    self.log.debug('Loading local repository packages...')
+                    base_packages = []
+                    # load local repo Packages
+                    local_pkgs_file = os.path.join(tmp_dir, 'local_packages')
+                    for p in os.listdir(os.path.join(self.__iso_fs_dir, 'dists')):
+                        self.log.debug('Loading packages for local repo dist: %s' % (p))
+                        # load repos
+                        for d in os.listdir(os.path.join(self.__iso_fs_dir, 'dists' + os.sep + p)):
+                            pkg_file = os.path.join(self.__iso_fs_dir, 'dists' + os.sep + p + os.sep + d + os.sep + 'binary-' + distro_arch + os.sep + 'Packages.gz')
+                            if os.path.exists(pkg_file):
+                                self.log.debug('Loading %s' % (d))
+                                g = gzip.open(pkg_file)
+                                f = open(local_pkgs_file, 'a')
+                                f.write(g.read())
+                                f.close()
+                                g.close()
+                    # load base packages from local packages file
+                    f = open(local_pkgs_file, 'r')
+                    for l in f.read().split('\n'):
+                        if l.find('Package:') > -1:
+                            pkg = l.split('Package:')[1].strip()
+                            base_packages.append(pkg)
+                    f.close()
+                    # load package dependencies
+                    pkg_count = len(packages)
+                    self.log.info('Loading dependencies...')
+                    while True:
+                        # get dependencies of packages
+                        for p in packages:
+                            depends = self.get_dependencies(p, pkgs_file)
+                            #self.log.debug('Dependencies for %s: %s' % (p, depends))
+                            [packages.append(x) for x in depends if x not in packages and x not in base_packages]
+                        pkg_count = len(packages)
+                        if len(packages) == pkg_count:
+                            break
+                    self.log.debug('All packages needed: %s' % (packages))
                     for p in packages:
                         self.log.debug('Searching for package %s...' % (p))
                         pkg_found = False
