@@ -618,9 +618,8 @@ def main(engine=None, gui=None):
             # extract
             if opts.skip_iso_extract == False:
                 eng.extract_iso()
-            # add additional packages
-            if PACKAGES:
-                eng.add_packages(PACKAGES)    
+            # packages -- call even if no packages were specified on command line in case they were added manually
+            eng.add_packages(PACKAGES)    
             # add custom preseed
             if PRESEED:
                 if os.path.exists(PRESEED):
@@ -818,13 +817,13 @@ class BuildEngine(object):
         raise RuntimeError, "Not yet implemented..."
 
     def add_packages(self, packages=None):
-        self.log.info('Adding packages...')
-        if packages:
-            return self.__distro.add_packages(packages=packages)
-        else:
-            if self.__project:
+        if self.__project:
                 return self.__distro.add_packages(packages=self.__project.packages)
-    
+        else:
+            if packages == None:
+                packages = []
+            return self.__distro.add_packages(packages=packages)
+
     def run_modules(self):
         try:
             self.log.info('Running modules...')
@@ -1419,6 +1418,8 @@ if __name__ == '__main__':
         # set preseed
         if opts.preseed:
             PRESEED = opts.preseed
+        else:
+            PRESEED = None
         # check for queue watcher
         if opts.queue:
             start_queue_watcher()

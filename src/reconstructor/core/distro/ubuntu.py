@@ -168,13 +168,13 @@ class UbuntuDistro(BaseDistro):
     def get_gpg_email(self):
         email = ''
         while email == '':
-            email = raw_input('Enter GPG key email address: ')
+            email = raw_input('Enter GPG key email address: ').strip()
         return email
 
     def get_gpg_passphrase(self):
         pswd = ''
         while pswd == '':
-            pswd = getpass.getpass('Enter GPG passphrase: ')
+            pswd = getpass.getpass('Enter GPG passphrase: ').strip()
         return pswd
     
     def get_dependencies(self, package=None, packages_file=None):
@@ -300,9 +300,26 @@ class UbuntuDistro(BaseDistro):
                         os.system('fuser -km %s' % (self.__live_fs_dir))
                     # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
             elif self.__build_type == 'alternate':
+                tmp_dir = tempfile.mkdtemp()
+                # find 'release' version
+                if not os.path.exists(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')):
+                    self.log.error('Unable to find release version for distro...')
+                    return False
+                f = open(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info'), 'r')
+                ver = f.read()
+                f.close()
+                # find ubuntu codename
+                # look for 'LTS' for the long term support releases
+                if ver.split()[2].lower() != 'lts':
+                    distro_codename = ver.split()[2].replace('"', '').lower()
+                    distro_version = ver.split()[1]
+                    distro_arch = ver.split()[6]
+                else:
+                    distro_codename = ver.split()[3].replace('"', '').lower()
+                    distro_version = ver.split()[1]
+                    distro_arch = ver.split()[7]
                 if len(packages) > 0:
                     pkg_list = ''
-                    tmp_dir = tempfile.mkdtemp()
                     if type(packages) is type({}):
                         for p in packages:
                             #pkg_list += '%s=%s ' % (p, packages[p])
@@ -342,20 +359,11 @@ class UbuntuDistro(BaseDistro):
                     f = open(isolinux_cfg_file, 'w')
                     f.write(isolinux_cfg)
                     f.close()
-                    distro_codename = None
+
+                # build release file for extras - even if no packages were specified on command line
+                if os.path.exists(os.path.join(self.__iso_fs_dir, 'pool' + os.sep + 'extras')):
                     # add packages to alt disc
-                    # find 'release' version
-                    if not os.path.exists(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')):
-                        self.log.error('Unable to find release version for distro...')
-                        return False
-                    f = open(os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info'), 'r')
-                    ver = f.read()
-                    f.close()
-                    # find ubuntu codename
-                    distro_codename = ver.split()[2].replace('"', '').lower()
-                    distro_version = ver.split()[1]
-                    distro_arch = ver.split()[6]
-                    self.log.info('Getting package lists for %s' % (distro_codename.capitalize()))
+                    self.log.info('Getting package lists for %s...' % (distro_codename))
                     # download package lists for each repo
                     repo_url = 'http://archive.ubuntu.com/ubuntu/dists/%s' % (distro_codename)
                     pkgs_file = os.path.join(tmp_dir, 'packages')
@@ -380,6 +388,7 @@ class UbuntuDistro(BaseDistro):
                         # cleanup
                         os.remove(pkg_bz2)
                         os.remove(pkg_file)
+
                     # find and download each package specified as well as ubuntu-keyring source
                     packages.append('ubuntu-keyring')
                     # load base package list from local repository
@@ -408,7 +417,7 @@ class UbuntuDistro(BaseDistro):
                     f.close()
                     # load package dependencies
                     pkg_count = len(packages)
-                    self.log.info('Loading dependencies...')
+                    self.log.info('Resolving dependencies...')
                     while True:
                         # get dependencies of packages
                         for p in packages:
@@ -419,6 +428,7 @@ class UbuntuDistro(BaseDistro):
                         if len(packages) == pkg_count:
                             break
                     self.log.debug('All packages needed: %s' % (packages))
+                    self.log.info('Download packages...')
                     for p in packages:
                         self.log.debug('Searching for package %s...' % (p))
                         pkg_found = False
@@ -432,7 +442,10 @@ class UbuntuDistro(BaseDistro):
                                 self.log.debug('Downloading %s...' % (p))
                                 if p == 'ubuntu-keyring':
                                     self.log.debug('Getting ubuntu-keyring source...')
-                                    pkg_url = pkg_url.replace('_all.deb', '.tar.gz')
+                                    if pkg_url.find('_all') > -1:
+                                        pkg_url = pkg_url.replace('_all.deb', '.tar.gz')
+                                    else:
+                                        pkg_url = pkg_url.replace('.deb', '.tar.gz')
                                     urllib.urlretrieve('http://archive.ubuntu.com/ubuntu/%s' % pkg_url, filename=os.path.join(tmp_dir, pkg_url.split('/')[-1]))
                                     # extract ubuntu-keyring source
                                     self.log.debug('Extracting ubuntu-keyring source...')
@@ -487,7 +500,7 @@ class UbuntuDistro(BaseDistro):
 
                     # import gpg key
                     for d in os.listdir(tmp_dir):
-                        if d.find('ubuntu-keyring') > -1:
+                        if d.find('ubuntu-keyring') > -1 and d.find('.gz') == -1:
                             self.log.debug('Importing Ubuntu key...')
                             ubuntu_keyring_file = os.path.join(tmp_dir, d + os.sep + 'keyrings' + os.sep + 'ubuntu-archive-keyring.gpg')
                             p = subprocess.Popen('gpg --import %s' % (ubuntu_keyring_file), shell=True)
@@ -566,6 +579,8 @@ class UbuntuDistro(BaseDistro):
                 self.log.error('Unsupported build type: %s' % (self.__build_type))
         except Exception, d:
             self.log.error('Error adding packages: %s' % (d))
+            import traceback
+            traceback.print_exc()
             return False
         
         
