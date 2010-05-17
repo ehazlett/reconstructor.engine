@@ -1327,6 +1327,7 @@ if __name__ == '__main__':
     MKSQUASHFS=None
     UNSQUASHFS=None
     PACKAGES=None
+    REMOVE_PACKAGES=None
     # cli options
     op = OptionParser()
     op.add_option('-g', '--gui', dest='launch_gui', action="store_true", default=False, help='Start the Reconstructor Engine GUI')
