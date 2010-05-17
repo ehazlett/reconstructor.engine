@@ -788,7 +788,7 @@ class BuildEngine(object):
         un_ver = Decimal(un_s.split('\n')[0].split(None, 4)[2])
         # check
         if DISTRO_TYPE == 'ubuntu':
-            self.log.info('You must have SquashFS tools 3.3+ for Ubuntu 9.04 and 4.0+ for Ubuntu 9.10...')
+            self.log.info('You must have SquashFS tools 3.3+ for Ubuntu 9.04 and 4.0+ for Ubuntu 9.10+...')
         elif DISTRO_TYPE == 'centos':
             self.log.info('You must have SquashFS tools 3.4 for CentOS 5.4...')
         return self.__distro.extract_live_fs()
@@ -1110,11 +1110,11 @@ class ReconstructorGui(object):
         if ver == '9.04' and squash_version < Decimal('3.3'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
-        if ver == '9.10' and squash_version < Decimal('4.0'):
+        if ver == '9.10' or ver == '10.04' and squash_version < Decimal('4.0'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
         else:
-            if ver != '9.04' and ver != '9.10':
+            if ver != '9.04' and ver != '9.10' or ver != '10.04':
                 log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
         # check for ec2
         PROJECT_TYPE = PROJECT.project_type.strip().lower()
