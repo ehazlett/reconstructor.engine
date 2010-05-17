@@ -196,7 +196,7 @@ class UbuntuDistro(BaseDistro):
 
     def add_packages(self, packages=None):
         try:
-            if self.__build_type == 'live':
+            if len(packages) > 0 and self.__build_type == 'live':
                 # add all package repositories
                 sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
                 f = open(sources_cfg, 'r')
