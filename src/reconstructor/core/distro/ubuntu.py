@@ -331,10 +331,16 @@ class UbuntuDistro(BaseDistro):
                     # generate preseed; append to existing ubuntu.seed if exists
                     self.log.debug('Generating preseed...')
                     ubuntu_seed_file = os.path.join(self.__iso_fs_dir, 'preseed' + os.sep + 'ubuntu.seed')
+                    ubuntu_server_seed_file = os.path.join(self.__iso_fs_dir, 'preseed' + os.sep + 'ubuntu-server.seed')
                     ubuntu_seed = None
                     if os.path.exists(ubuntu_seed_file):
                         self.log.debug('Using Ubuntu preseed...')
                         f = open(ubuntu_seed_file, 'r')
+                        ubuntu_seed = f.read()
+                        f.close()
+                    elif os.path.exists(ubuntu_server_seed_file):
+                        self.log.debug('Using Ubuntu Server preseed...')
+                        f = open(ubuntu_server_seed_file, 'r')
                         ubuntu_seed = f.read()
                         f.close()
                     preseed_file = os.path.join(tmp_dir, 'custom.seed')
@@ -353,6 +359,8 @@ class UbuntuDistro(BaseDistro):
                     for l in f.read().split('\n'):
                         if l.find('ubuntu.seed') > -1:
                             isolinux_cfg += '%s\n' % (l.replace('ubuntu.seed', 'custom.seed'))
+                        elif l.find('ubuntu-server.seed') > -1:
+                            isolinux_cfg += '%s\n' % (l.replace('ubuntu-server.seed', 'custom.seed'))
                         else:
                             isolinux_cfg += '%s\n' % (l)
                     f.close()
