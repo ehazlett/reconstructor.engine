@@ -1,3 +1,10 @@
+Version 3.3
+    * added initial support for alternate (install) disc creation
+    * minor bug fixes
+    * added support for removing packages from the live environment (--remove-packages)
+    * changed option for adding packages (--add-packages)
+    * fixed bug with unmounting temporary partitions
+
 Version 3.2.4
     * fixed bug with /proc and /dev/pts not being unmounted properly
 

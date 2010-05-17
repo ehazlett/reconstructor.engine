@@ -579,11 +579,38 @@ class UbuntuDistro(BaseDistro):
                 self.log.error('Unsupported build type: %s' % (self.__build_type))
         except Exception, d:
             self.log.error('Error adding packages: %s' % (d))
-            import traceback
-            traceback.print_exc()
             return False
         
-        
+    def remove_packages(self, packages=None):
+        try:
+            if len(packages) > 0:
+                pkg_list = ''
+                if type(packages) is type({}):
+                    for p in packages:
+                        #pkg_list += '%s=%s ' % (p, packages[p])
+                        pkg_list += '%s ' % (p)
+                        dpkg_pkgs += '%s ' % (p)
+                else:
+                    for p in packages:
+                        pkg_list += '%s ' % (p)
+                # create temp script
+                scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
+                f = open(scr_file, 'w')
+                f.write('#!/bin/sh\n# Reconstructor package removal script\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y --force-yes --purge remove %s\n\napt-get -f -y autoremove\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
+                f.close()
+                # make script executable
+                os.chmod(scr_file, 0775)
+                self.log.debug('Package removal list: %s' % (pkg_list))
+                # remove
+                p = subprocess.Popen('chroot %s /tmp/pkgs.sh' % (self.__live_fs_dir), shell=True)
+                os.waitpid(p.pid, 0)
+                # cleanup
+                os.remove(os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh'))
+            return True
+        except Exception, e:
+            self.log.error('Error removing packages: %s' % (e))
+            return False
+
     def enable_persistent_fs(self, size=64):
         '''Enables the casper-rw filesystem for saving changes between live sessions'''
         try:

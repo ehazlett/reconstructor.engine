@@ -311,12 +311,18 @@ def main(engine=None, gui=None):
                     if ONLINE:
                         update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
                     eng.add_packages()
+                    # remove packages
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Removing packages...')
+                    eng.remove_packages()
                 else:
                     eng.setup_environment()
                 # add additional packages
                 if PACKAGES:
                     eng.add_packages(PACKAGES)    
-    
+                # remove packages
+                if REMOVE_PACKAGES:
+                    eng.remove_packages(REMOVE_PACKAGES)
                 # enable persistent
                 if PERSISTENT_SIZE != None:
                     eng.enable_persistent(size=PERSISTENT_SIZE)
@@ -440,6 +446,9 @@ def main(engine=None, gui=None):
                 # add packages
                 update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
                 eng.add_packages()
+                # remove packages
+                update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Removing packages...')
+                eng.remove_packages()
                 # add public ssh credentials
                 eng.add_ssh_credentials()
                 
@@ -520,12 +529,18 @@ def main(engine=None, gui=None):
                     if ONLINE:
                         update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Installing packages...')
                     eng.add_packages()
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Removing packages...')
+                    eng.remove_packages()
                     # install grub if needed
                     ptype = eng.get_project().disk_image_type
                     if ptype == 'qemu' or ptype == 'vmware':
                         p = ['grub',]
                         eng.add_packages(packages=p)
-    
+                if PACKAGES:
+                    eng.add_packages(PACKAGES)
+                if REMOVE_PACKAGES:
+                    eng.remove_packages(REMOVE_PACKAGES)
                 # enable persistent
                 if PERSISTENT_SIZE != None:
                     eng.enable_persistent(size=PERSISTENT_SIZE)
@@ -825,6 +840,14 @@ class BuildEngine(object):
                 packages = []
             return self.__distro.add_packages(packages=packages)
 
+    def remove_packages(self, packages=None):
+        if self.__project:
+                return self.__distro.remove_packages(packages=self.__project.packages)
+        else:
+            if packages == None:
+                packages = []
+            return self.__distro.remove_packages(packages=packages)
+
     def run_modules(self):
         try:
             self.log.info('Running modules...')
@@ -926,8 +949,6 @@ class BuildEngine(object):
             if PROJECT and os.path.exists(self.__distro.get_project_dir()):
                 self.log.debug('Removing temporary project dir...')
                 shutil.rmtree(self.__distro.get_project_dir())
-            # get lvm name
-            lvm_name = self.__working_dir.split('/')[-1]
             # get all current mounts
             f = open('/proc/mounts', 'r')
             mounts = f.read().split('\n')
@@ -936,9 +957,9 @@ class BuildEngine(object):
             # loop through and unmount
             for m in mounts:
                 # only look for temporary LVM volume mount
-                if m.find(lvm_name) > -1:
+                if m != '' and m.find(self.__working_dir) > -1:
                     # don't unmount live fs dir
-                    if m.split(' ')[1].strip() != self.__working_dir:
+                    if m.split()[1].strip() != self.__working_dir:
                         self.log.debug('Unmounting %s...' % (m.split(' ')[1]))
                         os.system('umount -f %s' % (m.split(' ')[1]))
 
@@ -1317,7 +1338,8 @@ if __name__ == '__main__':
     op.add_option('-v', '--description', dest='description', help='ISO description')
     op.add_option('-l', '--lvm', dest='lvm_name', help='Use LVM device as source')
     op.add_option('--build-type', dest='build_type', default='live', help='Type of distro to build; e.g. live, alternate')
-    op.add_option('--packages', dest='additional_packages', help='Comma separated list of additional packages to add to distro')
+    op.add_option('--add-packages', dest='add_packages', help='Comma separated list of additional packages to add to distro')
+    op.add_option('--remove-packages', dest='remove_packages', help='Comma separated list of packages to remove from live distro')
     op.add_option('--queue', dest='queue', action="store_true", default=False, help='Start Reconstructor Queue watcher for online jobs')
     op.add_option('--keep-lvm', dest='keep_lvm', action="store_true", default=False, help='Do not remove temporary LVM volume')
     op.add_option('--install-only', dest='install_only', action="store_true", default=False, help='Skip extraction and build; Do install only')
@@ -1470,9 +1492,12 @@ if __name__ == '__main__':
         # persistent size
         if opts.persistent_size != None:
             PERSISTENT_SIZE=opts.persistent_size
-        # additional packages
-        if opts.additional_packages:
-            PACKAGES = opts.additional_packages.split(',')
+        # add packages
+        if opts.add_packages:
+            PACKAGES = opts.add_packages.split(',')
+        # remove packages
+        if opts.remove_packages:
+            REMOVE_PACKAGES = opts.remove_packages.split(',')
         # check for distro type
         if opts.build_type.lower() != 'live' and opts.distro_type.lower() != 'ubuntu':
             log.error('Only \'live\' distro types are supported for non-Ubuntu distros...')
