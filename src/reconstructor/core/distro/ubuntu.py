@@ -196,34 +196,34 @@ class UbuntuDistro(BaseDistro):
 
     def add_packages(self, packages=None):
         try:
-            if len(packages) > 0 and self.__build_type == 'live':
-                # add all package repositories
-                sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
-                f = open(sources_cfg, 'r')
-                cfg = f.read().split('\n')
-                f.close()
-                new_cfg = ''
-                # enable repos
-                for l in cfg:
-                    if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
-                        new_cfg += l[2:] + '\n'
-                    elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
-                        new_cfg += l[2:] + '\n'
-                    elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
-                        new_cfg += l[2:] + '\n'
-                    elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
-                        new_cfg += l[2:] + '\n'
-                    else:
-                        new_cfg += l + '\n'
-                f = open(sources_cfg, 'w')
-                f.write(new_cfg)
-                f.close()
-
-                # create 'apt-get install' package list
-                pkg_list = ''
-                dpkg_pkgs = ''
-                java_version = None
+            if self.__build_type == 'live':
                 if len(packages) > 0:
+                    # add all package repositories
+                    sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
+                    f = open(sources_cfg, 'r')
+                    cfg = f.read().split('\n')
+                    f.close()
+                    new_cfg = ''
+                    # enable repos
+                    for l in cfg:
+                        if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
+                            new_cfg += l[2:] + '\n'
+                        elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
+                            new_cfg += l[2:] + '\n'
+                        elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
+                            new_cfg += l[2:] + '\n'
+                        elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
+                            new_cfg += l[2:] + '\n'
+                        else:
+                            new_cfg += l + '\n'
+                    f = open(sources_cfg, 'w')
+                    f.write(new_cfg)
+                    f.close()
+
+                    # create 'apt-get install' package list
+                    pkg_list = ''
+                    dpkg_pkgs = ''
+                    java_version = None
                     if type(packages) is type({}):
                         for p in packages:
                             #pkg_list += '%s=%s ' % (p, packages[p])
