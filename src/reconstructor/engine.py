@@ -1114,7 +1114,7 @@ class ReconstructorGui(object):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
         else:
-            if ver != '9.04' and ver != '9.10' or ver != '10.04':
+            if ver != '9.04' and ver != '9.10' and ver != '10.04':
                 log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
         # check for ec2
         PROJECT_TYPE = PROJECT.project_type.strip().lower()
