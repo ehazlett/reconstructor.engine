@@ -841,7 +841,7 @@ class BuildEngine(object):
             return self.__distro.add_packages(packages=packages)
 
     def remove_packages(self, packages=None):
-        if self.__project:
+        if self.__project and not packages:
                 return self.__distro.remove_packages(packages=self.__project.base_packages_removed)
         else:
             if packages == None:
