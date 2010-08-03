@@ -233,11 +233,15 @@ class UbuntuDistro(BaseDistro):
                         for p in packages:
                             pkg_list += '%s ' % (p)
                     # check for java
+                    java_version = None
                     for p in packages:
                         if p.find('java') > 0:
-                            java_version = p[p.find('java')+4]
+                            try:
+                                java_version = p[p.find('java')+4]
+                            except:
+                                # ignore
+                                pass
                     # create java license bypass script
-                    jv = java_version
                     # HACK: set the bypass for java 5,6 - will halt package installation if a package relies on java...
                     # for java 5
                     java_bypass = 'sun-java5-bin shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jdk  shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre shared/accepted-sun-dlj-v1-1 boolean true\nsun-java5-jre sun-java5-jre/stopthread boolean true\nsun-java5-jre sun-java5-jre/jcepolicy note\nsun-java5-bin shared/present-sun-dlj-v1-1 note\nsun-java5-jdk shared/present-sun-dlj-v1-1 note\nsun-java5-jre shared/present-sun-dlj-v1-1 note\n'
