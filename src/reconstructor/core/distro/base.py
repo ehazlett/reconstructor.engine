@@ -62,6 +62,7 @@ class BaseDistro(object):
     def get_iso_fs_dir(self): return self.__iso_fs_dir
     def get_initrd_dir(self): return self.__initrd_dir 
     def get_src_iso_filename(self): return self.__src_iso_filename 
+    def set_src_iso_filename(self, val): self.__src_iso_filename = val
     def get_live_fs_filename(self): return self.__live_fs_filename
     def get_project_dir(self): return self.__project_dir
     def get_project_files_dir(self): return os.path.join(self.__project_dir, 'files')

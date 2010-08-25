@@ -284,20 +284,22 @@ def main(engine=None, gui=None):
                 # set project_dir for distro
                 if PROJECT:
                     eng.get_distro().set_project_dir(eng.get_project().get_tmpdir())
-        
+                
                 if not opts.lvm_name and eng.get_src_iso_filename():
                     # extract ISO if requested
-                    if opts.skip_iso_extract == False:
+                    if ONLINE:
+                        update_job_status(post_url=prj.job_status_post_url, job_id=prj.job_id, action='build_action', value='Extracting ISO...')
+                    if ONLINE or opts.skip_iso_extract == False:
                         eng.extract_iso()
                     else:
                         log.info('Skipping ISO extraction...')
                     # extract SquashFs if requested
-                    if opts.skip_livefs_extract == False:
+                    if ONLINE or opts.skip_livefs_extract == False:
                         eng.extract_live_fs()
                     else:
                         log.info('Skipping LiveFS filesystem extraction...')
                     # extract initrd if requested
-                    if opts.skip_initrd_extract == False:
+                    if ONLINE or opts.skip_initrd_extract == False:
                         eng.extract_initrd()
                     else:
                         log.info('Skipping Initrd extraction...')
@@ -667,7 +669,7 @@ def main(engine=None, gui=None):
         if PROJECT:
             eng.get_project().cleanup()
 
-        if opts.lvm_name or ONLINE:
+        if opts.lvm_name:
             # unmount working directory
             log.debug('Unmounting %s' % (WORKING_DIR))
             os.system('umount %s' % (WORKING_DIR))
@@ -677,7 +679,8 @@ def main(engine=None, gui=None):
                 # remove lvm snapshot
                 log.info('Removing temporary LVM volume...')
                 os.system('lvremove -f %s' % (os.path.join(settings.LVM_ROOT, WORKING_DIR.split('/')[-1])))
-            # remove temp lvm dir
+        # remove temp lvm dir
+        if ONLINE:
             shutil.rmtree(WORKING_DIR)
         # update UI if needed
         if gui:
@@ -887,7 +890,7 @@ class BuildEngine(object):
         if self.__project:
             if self.__project.online:
                 # write to file for online version
-                self.__output_file = self.__project.name.replace(' ', '_') + '_' + self.__project.author.replace(' ', '_') + '.iso'
+                self.__output_file = self.__project.name.replace(' ', '_').replace('\'', '') + '_' + self.__project.author.replace(' ', '_') + '.iso'
                 return iso_tools.create(description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=os.path.join(settings.ONLINE_ISO_REPO, self.__output_file))
             else:
                 return iso_tools.create(description=self.__description, src_dir=self.__distro.get_iso_fs_dir(), dest_file=self.__output_file)
@@ -1381,8 +1384,49 @@ if __name__ == '__main__':
             PROJECT = Project(opts.project_file)
             DISTRO_TYPE = PROJECT.distro
             ARCH = PROJECT.arch
-            SRC_ISO_FILE = PROJECT.src_iso
             ONLINE = PROJECT.online
+            # set source ISO
+            if ONLINE:
+                # find ISO file
+                dist = PROJECT.distro.lower().strip()
+                ver = PROJECT.distro_version.strip()
+                ptype = PROJECT.project_type.lower().strip()
+                penv = PROJECT.environment.lower().strip()
+                arch = ''
+                # find project type
+                if ptype == 'live' or ptype == 'disk':
+                    # set text
+                    if penv == 'text':
+                        env = 'text'
+                    else:
+                        env = 'desktop'
+                elif ptype == 'alternate':
+                    env = 'alternate'
+                elif ptype == 'ec2': # not currently in use
+                    env = 'text'
+                else:
+                    log.error('Unknown project type: %s' % (ptype))
+                # find environment
+                if penv == 'gnome':
+                    dist = 'ubuntu'
+                elif penv == 'kde':
+                    dist = 'kubuntu'
+                elif penv == 'xfce':
+                    dist = 'xubuntu'
+                elif penv == 'text':
+                    # don't set anything -- will either be debian or ubuntu
+                    pass
+                else:
+                    log.error('Unknown source environment: %s' % (dist))
+                # find arch
+                if '64' in ARCH:
+                    arch = 'amd64'
+                else:
+                    arch = 'i386'
+                # set ISO filename
+                SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
+            else:
+                SRC_ISO_FILE = PROJECT.src_iso
             # set online project file
             if ONLINE:
                 OUTPUT_FILE = PROJECT.output_file
@@ -1392,7 +1436,7 @@ if __name__ == '__main__':
                 if ver == '9.04':
                     MKSQUASHFS = settings.MKSQUASHFS_3_3
                     UNSQUASHFS = settings.UNSQUASHFS_3_3
-                elif ver == '9.10':
+                elif ver == '9.10' or ver == '10.04':
                     MKSQUASHFS = settings.MKSQUASHFS_4_0
                     UNSQUASHFS = settings.UNSQUASHFS_4_0
                 else:
@@ -1402,8 +1446,6 @@ if __name__ == '__main__':
             else:
                 arch = 'x86'
             if ONLINE:
-                #TODO: remove the LVM setup and replace with standard ISO extraction
-                log.debug('Online project: creating LVM temporary lvm volume...')
                 ptype = PROJECT.project_type.strip().lower()
                 base = ''
                 env = ''
@@ -1416,17 +1458,23 @@ if __name__ == '__main__':
                 else:
                     log.error('Unknown project type.  Cannot create LVM volume.')
                     sys.exit(1)
-                lvm_name = '%s_%s_%s_%s_%s' % (PROJECT.distro.strip().lower(), base, env, PROJECT.distro_version.strip().lower(), arch)
-                lvm = create_lvm_volume(lvm_name)
-                if lvm == False:
-                    # report error and exit
-                    log_filename = '%s_%s.log' % (PROJECT.name.replace(' ', '_'), PROJECT.author.replace(' ', '_'))
-                    # copy log
-                    shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
-                    update_job_status(post_url=PROJECT.job_status_post_url, job_id=PROJECT.job_id, action='status', value='error', log_filename=log_filename)
-                    sys.exit(1)
-                else:
-                    WORKING_DIR = lvm
+                # extract
+                if settings.LVM_ROOT != '': # using LVM -- DEPRECATED
+                    log.debug('Online project: creating LVM temporary lvm volume...')
+                    lvm_name = '%s_%s_%s_%s_%s' % (PROJECT.distro.strip().lower(), base, env, PROJECT.distro_version.strip().lower(), arch)
+                    lvm = create_lvm_volume(lvm_name)
+                    if lvm == False:
+                        # report error and exit
+                        log_filename = '%s_%s.log' % (PROJECT.name.replace(' ', '_'), PROJECT.author.replace(' ', '_'))
+                        # copy log
+                        shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build.log'), os.path.join(settings.ONLINE_ISO_REPO, log_filename))
+                        update_job_status(post_url=PROJECT.job_status_post_url, job_id=PROJECT.job_id, action='status', value='error', log_filename=log_filename)
+                        sys.exit(1)
+                    else:
+                        WORKING_DIR = lvm
+                else: # standard ISO extraction
+                    WORKING_DIR = tempfile.mkdtemp()
+                    log.debug('Setting up working directory: %s' % (WORKING_DIR))
 
         # check squashfs-tools
         if opts.mksquashfs:
@@ -1476,17 +1524,18 @@ if __name__ == '__main__':
             WORKING_DIR=opts.working_dir
         
         # set LVM
-        if opts.lvm_name and not opts.no_build and not opts.project_file:
+        if settings.LVM_ROOT != '' and opts.lvm_name and not opts.no_build and not opts.project_file:
             WORKING_DIR = create_lvm_volume(lvm_name)
 
         # check paths
-        if os.path.exists(str(opts.iso_filename)):
-            SRC_ISO_FILE=opts.iso_filename
-        elif opts.build_only == True or opts.install_only == True or opts.project_file or opts.lvm_name:
-            pass
-        else:
-            log.error('Source ISO filename does not exist.')
-            sys.exit(1)
+        if not ONLINE:
+            if os.path.exists(str(opts.iso_filename)):
+                SRC_ISO_FILE=opts.iso_filename
+            elif opts.build_only == True or opts.install_only == True or opts.project_file or opts.lvm_name:
+                pass
+            else:
+                log.error('Source ISO filename does not exist.')
+                sys.exit(1)
         # custom app
         if opts.custom_app != None:
             CUSTOM_APP=opts.custom_app
