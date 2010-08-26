@@ -1407,24 +1407,28 @@ if __name__ == '__main__':
                 else:
                     log.error('Unknown project type: %s' % (ptype))
                 # find environment
-                if penv == 'gnome':
-                    dist = 'ubuntu'
-                elif penv == 'kde':
-                    dist = 'kubuntu'
-                elif penv == 'xfce':
-                    dist = 'xubuntu'
-                elif penv == 'text':
-                    # don't set anything -- will either be debian or ubuntu
-                    pass
-                else:
-                    log.error('Unknown source environment: %s' % (dist))
+                if dist.lower() != 'debian':
+                    if penv == 'gnome':
+                        dist = 'ubuntu'
+                    elif penv == 'kde':
+                        dist = 'kubuntu'
+                    elif penv == 'xfce':
+                        dist = 'xubuntu'
+                    elif penv == 'text':
+                        # don't set anything -- will either be debian or ubuntu
+                        pass
+                    else:
+                        log.error('Unknown source environment: %s' % (dist))
                 # find arch
                 if '64' in ARCH:
                     arch = 'amd64'
                 else:
                     arch = 'i386'
                 # set ISO filename
-                SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
+                if dist.lower() != 'debian':
+                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, penv, env, arch))
+                else: # ubuntu
+                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s-%s.iso' % (dist, ver, env, arch))
             else:
                 SRC_ISO_FILE = PROJECT.src_iso
             # set online project file
