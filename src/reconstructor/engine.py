@@ -1426,9 +1426,9 @@ if __name__ == '__main__':
                     arch = 'i386'
                 # set ISO filename
                 if dist.lower() != 'debian':
-                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, penv, env, arch))
+                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s-%s.iso' % (dist, ver, penv, env, arch))
                 else: # ubuntu
-                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s-%s.iso' % (dist, ver, env, arch))
+                    SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
             else:
                 SRC_ISO_FILE = PROJECT.src_iso
             # set online project file
