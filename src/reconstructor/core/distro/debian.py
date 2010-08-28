@@ -142,8 +142,10 @@ class DebianDistro(BaseDistro):
             self.log.debug('Building initial ramdisk...')
             initrd1 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd1.img')
             initrd2 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd2.img')
-            os.remove(initrd1)
-            os.remove(initrd2)
+            if os.path.exists(initrd1):
+                os.remove(initrd1)
+            if os.path.exists(initrd2):
+                os.remove(initrd2)
             os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd1'), initrd1))
             os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd2'), initrd2))
             return True
