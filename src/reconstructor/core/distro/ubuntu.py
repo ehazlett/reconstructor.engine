@@ -196,10 +196,18 @@ class UbuntuDistro(BaseDistro):
 
     def add_packages(self, packages=None):
         try:
+            policyrcd_script = os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'sbin' + os.sep + 'policy-rc.d')
             if self.__build_type == 'live':
                 if len(packages) > 0:
                     # add all package repositories
                     sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
+                    # prevent daemons from starting
+                    f = open(policyrcd_script, 'w')
+                    f.write('#!/bin/sh\n\nexit 0\n')
+                    f.close()
+                    os.chmod(policyrcd_script, 0775)
+
+                    # repo config
                     f = open(sources_cfg, 'r')
                     cfg = f.read().split('\n')
                     f.close()
@@ -298,6 +306,9 @@ class UbuntuDistro(BaseDistro):
                         f.write(cfg)
                         f.close()
                     
+                    # remove policy-rc.d script
+                    if os.path.exists(policyrcd_script):
+                        os.remove(policyrcd_script)
                     # kill all running process to prevent unmount errors
                     self.log.debug('Stopping all running process in chroot...')
                     if self.__online:

@@ -1,5 +1,7 @@
 Version 3.4
     * changed "queue" to use standard ISOs instead of LVM templates
+    * fixed Debian remove_packages bug
+
 Version 3.3
     * added initial support for alternate (install) disc creation
     * minor bug fixes
