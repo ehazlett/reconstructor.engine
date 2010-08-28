@@ -247,7 +247,7 @@ class DebianDistro(BaseDistro):
                 # kill all running process to prevent unmount errors
                 self.log.debug('Stopping all running process in chroot...')
                 if self.__online:
-                    os.system('fuser -km %s' % (self.__live_fs_dir))
+                    os.system('fuser -k %s' % (self.__live_fs_dir))
                 # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
         except Exception, d:
             self.log.error('Error adding packages: %s' % (d))
