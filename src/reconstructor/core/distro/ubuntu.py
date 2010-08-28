@@ -608,7 +608,7 @@ class UbuntuDistro(BaseDistro):
                 # create temp script
                 scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
                 f = open(scr_file, 'w')
-                f.write('#!/bin/sh\n# Reconstructor package removal script\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y --force-yes --purge remove %s\n\napt-get -f -y autoremove\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
+                f.write('#!/bin/sh\n# Reconstructor package removal script\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y --force-yes --purge remove %s\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y autoremove\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
                 f.close()
                 # make script executable
                 os.chmod(scr_file, 0775)
