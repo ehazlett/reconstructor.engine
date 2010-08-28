@@ -155,13 +155,6 @@ class DebianDistro(BaseDistro):
 
     def add_packages(self, packages=None):
         try:
-            # prevent daemons from starting
-            policyrcd_script = os.path.join(self.__live_fs_dir, 'usr' + os.sep + 'sbin' + os.sep + 'policy-rc.d')
-            f = open(policyrcd_script, 'w')
-            f.write('#!/bin/sh\n\nexit 0\n')
-            f.close()
-            os.chmod(policyrcd_script, 0775)
-
             # add all package repositories
             sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
             f = open(sources_cfg, 'r')
@@ -253,10 +246,6 @@ class DebianDistro(BaseDistro):
                     f.write(cfg)
                     f.close()
                 
-                # remove policy-rc.d script
-                if os.path.exists(policyrcd_script):
-                    os.remove(policyrcd_script)
-
                 # kill all running process to prevent unmount errors
                 self.log.debug('Stopping all running process in chroot...')
                 if self.__online:
