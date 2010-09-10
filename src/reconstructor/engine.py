@@ -1113,11 +1113,11 @@ class ReconstructorGui(object):
         if ver == '9.04' and squash_version < Decimal('3.3'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
-        if ver == '9.10' or ver == '10.04' and squash_version < Decimal('4.0'):
+        if ver == '9.10' or ver == '10.04' or ver == '10.04.1' and squash_version < Decimal('4.0'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
         else:
-            if ver != '9.04' and ver != '9.10' and ver != '10.04':
+            if ver != '9.04' and ver != '9.10' and ver != '10.04' and ver != '10.04.1':
                 log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
         # check for ec2
         PROJECT_TYPE = PROJECT.project_type.strip().lower()
@@ -1440,7 +1440,7 @@ if __name__ == '__main__':
                 if ver == '9.04':
                     MKSQUASHFS = settings.MKSQUASHFS_3_3
                     UNSQUASHFS = settings.UNSQUASHFS_3_3
-                elif ver == '9.10' or ver == '10.04':
+                elif ver == '9.10' or ver == '10.04' or ver == '10.04.1':
                     MKSQUASHFS = settings.MKSQUASHFS_4_0
                     UNSQUASHFS = settings.UNSQUASHFS_4_0
                 else:
