@@ -118,6 +118,9 @@ class FedoraDistro(BaseDistro):
             fs_tools.mount(os.path.join(tmpSquashDir, 'ext3fs.img'), tmpMntDir)
             # copy files
             os.system('rsync -a %s/ %s/' % (self.__live_fs_dir, tmpMntDir))
+            # TODO: relabel filesystem for selinux
+            #self.log.info('Performing relabel on filesystem (selinux)...')
+            #os.system('chroot %s /sbin/fixfiles relabel' % (tmpMntDir))
             self.log.info('Building squash filesystem: %s' % (self.__live_fs_filename))
             if squash_tools.create_squash_fs(mksquashfs_cmd=self.__mksquash, source_dir=tmpImgDir, dest_filename=self.__live_fs_filename, overwrite=True):
                 if os.path.exists(self.__live_fs_filename):

@@ -700,7 +700,11 @@ class BuildEngine(object):
         self.__output_file = output_file
         self.__build_type = build_type
         if description:
-            self.__description = description
+            if self.__distro_name == 'fedora':
+                # modify ISO description so when init can find livefs on boot
+                self.__description = description.replace(' ', '-')
+            else:
+                self.__description = description
         else:
             self.__description = '%s-custom' % (self.__distro_name)
         self.__project = project
@@ -894,6 +898,32 @@ class BuildEngine(object):
         f = open(os.path.join(self.__distro.get_iso_fs_dir(), '.r_id'), 'w')
         f.write('Built using %s %s\n%s\n%s\n' % (settings.APP_NAME, settings.APP_VERSION, settings.APP_COPYRIGHT, settings.APP_URL))
         f.close()
+        # update fedora root param if needed
+        if self.__distro_name == 'fedora':
+            self.log.debug('Updating boot config for %s' % (self.__distro_name))
+            cfg_file = os.path.join(self.__distro.get_iso_fs_dir(), 'isolinux' + os.sep + 'isolinux.cfg')
+            f = open(cfg_file, 'r')
+            cfg = f.read().split('\n')
+            f.close()
+            # update boot param
+            new_cfg = ''
+            for l in cfg:
+                if l.find('root=') > -1:
+                    b = l.split()
+                    c = []
+                    for x in b:
+                        if x.find('root=') > -1:
+                            x = 'root=live:CDLABEL=%s' % (self.__description)
+                        c.append('%s' % (x))
+                    # TODO: fix selinux -- for now disable
+                    if 'enforcing=0' not in b:
+                        c.append('enforcing=0 ')
+                    new_cfg += '  ' + ' '.join(c) + '\n'
+                else:
+                    new_cfg += l + '\n'
+            f = open(cfg_file, 'w')
+            f.write(new_cfg)
+            f.close()
         if self.__project:
             if self.__project.online:
                 # write to file for online version
