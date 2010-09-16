@@ -50,7 +50,7 @@ from reconstructor import settings
 from reconstructor.core import fs_tools
 from reconstructor.core import iso_tools
 from reconstructor.core import squash_tools
-from reconstructor.core.distro import ubuntu, ubuntu_ec2, centos, debian
+from reconstructor.core.distro import ubuntu, ubuntu_ec2, centos, debian, fedora
 from reconstructor.config import Project
 
 # logging vars
@@ -693,7 +693,7 @@ class BuildEngine(object):
         self.log = logging.getLogger('BuildEngine')
         #self.log.debug('%s, %s, %s, %s, %s, %s, %s, %s' % (distro, arch, description, working_dir, src_iso_filename, project, lvm_name, output_file))
         self.log.debug('Engine initialized...')
-        self.__all_distros = ['ubuntu','centos','debian',]
+        self.__all_distros = ['ubuntu','centos','debian','fedora']
         self.__arch = arch
         self.__distro_name = distro.lower()
         self.log.debug('Distro: %s Arch: %s' % (self.__distro_name, self.__arch))
@@ -702,7 +702,7 @@ class BuildEngine(object):
         if description:
             self.__description = description
         else:
-            self.__description = '%s custom' % (self.__distro_name)
+            self.__description = '%s-custom' % (self.__distro_name)
         self.__project = project
         self.__lvm_name = lvm_name
         self.__distro = None
@@ -757,6 +757,8 @@ class BuildEngine(object):
                         self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                     elif distro_name == 'debian':
                         self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
+                    elif distro_name == 'fedora':
+                        self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=self.__project.online, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                     else:
                         self.log.error('Unknown distro for live or disk project...')
                         sys.exit(1)
@@ -775,6 +777,11 @@ class BuildEngine(object):
                     self.__distro = centos.CentosDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
                 elif distro_name == 'debian':
                     self.__distro = debian.DebianDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
+                elif distro_name == 'fedora':
+                    self.__distro = fedora.FedoraDistro(arch=arch, working_dir=working_dir, src_iso_filename=src_iso_filename, online=False, run_post_config=self.__run_post_config, mksquashfs=MKSQUASHFS, unsquashfs=UNSQUASHFS, build_type=build_type)
+                else:
+                    self.log.error('Unknown distro for live or disk project...')
+                    sys.exit(1)
 
             self.log.info('Build Distribution: %s' % (distro_name))
      
@@ -1131,7 +1138,7 @@ class ReconstructorGui(object):
         cursor = gtk.gdk.Cursor(gtk.gdk.WATCH)
         self.main_window.window.set_cursor(cursor)
         log.debug(WORKING_DIR)
-        eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, working_dir=WORKING_DIR, src_iso_filename=src_iso_filename, project=PROJECT, output_file=target_filename)
+        eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, description=DESCRIPTION, working_dir=WORKING_DIR, src_iso_filename=src_iso_filename, project=PROJECT, output_file=target_filename)
         # start engine in new thread to unblock UI
         threading.Thread(target=main, args=[eng,self]).start()
         return True
