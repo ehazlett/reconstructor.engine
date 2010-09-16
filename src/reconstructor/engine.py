@@ -266,7 +266,7 @@ def main(engine=None, gui=None):
         if engine:
             eng = engine
         else:
-            eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, working_dir=WORKING_DIR, src_iso_filename=SRC_ISO_FILE, project=PROJECT, lvm_name=LVM_NAME, output_file=OUTPUT_FILE, build_type=BUILD_TYPE)
+            eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, description=DESCRIPTION, working_dir=WORKING_DIR, src_iso_filename=SRC_ISO_FILE, project=PROJECT, lvm_name=LVM_NAME, output_file=OUTPUT_FILE, build_type=BUILD_TYPE)
         if BUILD_TYPE == 'live':
             # live project
             if eng.get_project() == None or eng.get_project().project_type == 'live':
