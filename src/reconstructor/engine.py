@@ -1444,7 +1444,7 @@ if __name__ == '__main__':
                 else:
                     log.error('Unknown project type: %s' % (ptype))
                 # find environment
-                if dist.lower() != 'debian':
+                if dist.lower() != 'debian' and dist.lower() != 'fedora':
                     if penv == 'gnome':
                         dist = 'ubuntu'
                     elif penv == 'kde':
@@ -1458,13 +1458,19 @@ if __name__ == '__main__':
                         log.error('Unknown source environment: %s' % (dist))
                 # find arch
                 if '64' in ARCH:
-                    arch = 'amd64'
+                    if dist.lower() == 'ubuntu' or dist.lower() == 'debian':
+                        arch = 'amd64'
+                    elif dist.lower() == 'fedora':
+                        arch = 'x86_64'
+                    else:
+                        log.error('Unable to parse distro for 64-bit arch: %s' % (dist.lower()))
+                        sys.exit(1)
                 else:
                     arch = 'i386'
                 # set ISO filename
-                if dist.lower() != 'debian':
+                if dist.lower() == 'ubuntu':
                     SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
-                else: # ubuntu
+                elif dist.lower() == 'debian' or dist.lower() == 'fedora':
                     SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s-%s.iso' % (dist, ver, penv, env, arch))
             else:
                 SRC_ISO_FILE = PROJECT.src_iso
@@ -1477,13 +1483,16 @@ if __name__ == '__main__':
                 if ver == '9.04':
                     MKSQUASHFS = settings.MKSQUASHFS_3_3
                     UNSQUASHFS = settings.UNSQUASHFS_3_3
-                elif ver == '9.10' or ver == '10.04' or ver == '10.04.1':
+                elif ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver == '13':
                     MKSQUASHFS = settings.MKSQUASHFS_4_0
                     UNSQUASHFS = settings.UNSQUASHFS_4_0
                 else:
                     log.warn('Unknown distro version.  Using system default squashfs-tools...')
             if '64' in ARCH:
-                arch = 'amd64'
+                if dist.lower() == 'fedora':
+                    arch = 'x86_64'
+                else:
+                    arch = 'amd64'
             else:
                 arch = 'x86'
             if ONLINE:
