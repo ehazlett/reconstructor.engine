@@ -70,6 +70,17 @@ console.setLevel(LOG_LEVEL)
 logging.getLogger('').addHandler(console)
 log = logging.getLogger('CoreApp')
 
+def clean_project_name(name=None):
+    if not name:
+        return 'unknown-project'
+    n = ''
+    for c in name:
+        if c not in string.letters and c not in string.digits and c != '-' and c != '_':
+            pass
+        else:
+            n += c
+    return n
+
 # custom logging handler for gtk textview
 class TextBufferHandler(logging.Handler):
     def __init__(self, textbuffer=None):
@@ -725,7 +736,10 @@ class BuildEngine(object):
         # load
         if self.__project:
             self.load_distro(arch=self.__arch, distro_name=self.__distro_name, working_dir=self.__working_dir, src_iso_filename=src_iso_filename, build_type=self.__build_type)
-            self.__description = self.__project.name
+            if self.__distro_name == 'fedora':
+                self.__description = clean_project_name(self.__project.name)
+            else:
+                self.__description = self.__project.name
             self.__run_post_config = self.__project.run_post_config
         else:
             self.load_distro(arch=self.__arch, distro_name=distro, working_dir=self.__working_dir, src_iso_filename=src_iso_filename, build_type=self.__build_type)
@@ -1477,6 +1491,7 @@ if __name__ == '__main__':
             # set online project file
             if ONLINE:
                 OUTPUT_FILE = PROJECT.output_file
+            dist = PROJECT.distro.lower().strip()
             # set squashfs-tools
             ver = PROJECT.distro_version.strip()
             if ONLINE:
