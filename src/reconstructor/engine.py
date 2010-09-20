@@ -1480,7 +1480,10 @@ if __name__ == '__main__':
                         log.error('Unable to parse distro for 64-bit arch: %s' % (dist.lower()))
                         sys.exit(1)
                 else:
-                    arch = 'i386'
+                    if dist.lower() == 'fedora':
+                        arch = 'i686'
+                    else:
+                        arch = 'i386'
                 # set ISO filename
                 if dist.lower() == 'ubuntu':
                     SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
