@@ -112,7 +112,8 @@ class FedoraDistro(BaseDistro):
             tmpSquashDir = tmpImgDir + os.sep + 'LiveOS'
             tmpMntDir = tempfile.mkdtemp()
             os.makedirs(tmpSquashDir)
-            os.system('dd if=/dev/zero of=%s/ext3fs.img bs=1M count=0 seek=8192' % (tmpSquashDir))
+            # default fedora uses a 3GB image -- larger takes longer to boot and live env runs slower
+            os.system('dd if=/dev/zero of=%s/ext3fs.img bs=1M count=0 seek=3072' % (tmpSquashDir))
             os.system('mkfs.ext3 -F %s' % (os.path.join(tmpSquashDir, 'ext3fs.img')))
             # mount
             fs_tools.mount(os.path.join(tmpSquashDir, 'ext3fs.img'), tmpMntDir)
