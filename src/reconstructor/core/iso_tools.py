@@ -72,11 +72,13 @@ def extract(iso_filename=None, target_dir=None):
 def create(description=None, src_dir=None, dest_file=None):
     if src_dir and dest_file:
         log.info('Creating ISO...')
+        # reduce description to 32 chars -- max supported by ISO
+        desc = description[:32]
         update_md5sums(src_dir=src_dir)
-        os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
+        os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, desc, src_dir))
         return True
     else:
-        log.debug('%s %s %s' % (description, src_dir, dest_file))
+        log.debug('%s %s %s' % (desc, src_dir, dest_file))
         log.error('You must specify source directory and destination file...')
         return False
 
