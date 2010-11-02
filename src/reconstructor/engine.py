@@ -869,6 +869,7 @@ class BuildEngine(object):
             return self.__distro.add_packages(packages=packages)
 
     def remove_packages(self, packages=None):
+	return True
         if self.__project and not packages:
                 return self.__distro.remove_packages(packages=self.__project.base_packages_removed)
         else:
@@ -1485,8 +1486,9 @@ if __name__ == '__main__':
                     else:
                         arch = 'i386'
                 # set ISO filename
-                if dist.lower() == 'ubuntu':
+                if dist.lower().find('ubuntu') > -1:
                     SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s.iso' % (dist, ver, env, arch))
+                    log.debug('Using {0} for source ISO...'.format(SRC_ISO_FILE))
                 elif dist.lower() == 'debian' or dist.lower() == 'fedora':
                     SRC_ISO_FILE = os.path.join(settings.ISO_REPO, '%s-%s-%s-%s-%s.iso' % (dist, ver, penv, env, arch))
             else:
