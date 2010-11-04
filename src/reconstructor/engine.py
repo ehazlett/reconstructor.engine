@@ -100,7 +100,7 @@ class TextBufferHandler(logging.Handler):
 
 # global functions
 def check_depends():
-    depends = ['mksquashfs', 'genisoimage', 'syslinux', 'rsync', 'fuser', 'kpartx', 'parted', 'mkfs.vfat', 'install-mbr', 'fakeroot', 'dpkg-buildpackage']
+    depends = ['mksquashfs', 'genisoimage', 'syslinux', 'rsync', 'fuser', 'kpartx', 'parted', 'mkfs.vfat', 'install-mbr', 'fakeroot', 'dpkg-buildpackage', 'implantisomd5']
     deps = ''
     for d in depends:
         if commands.getoutput('which %s' % (d)) == '':
@@ -115,6 +115,8 @@ def check_depends():
                 deps += '%s ' % ('mbr')
             elif d == 'dpkg-buildpackage':
                 deps += '%s ' % ('dpkg-dev')
+            elif d == 'implantisomd5':
+                deps += '%s ' %('isomd5sum')
             else:
                 deps += '%s ' % (d)
     return deps
@@ -1165,11 +1167,11 @@ class ReconstructorGui(object):
         if ver == '9.04' and squash_version < Decimal('3.3'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
-        if ver == '9.10' or ver == '10.04' or ver == '10.04.1' and squash_version < Decimal('4.0'):
+        if ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver == '10.10' and squash_version < Decimal('4.0'):
             log.error('You need to upgrade your SquashFS tools before preceding...')
             return False
         else:
-            if ver != '9.04' and ver != '9.10' and ver != '10.04' and ver != '10.04.1':
+            if ver != '9.04' and ver != '9.10' and ver != '10.04' and ver != '10.04.1' and ver != '10.10':
                 log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
         # check for ec2
         PROJECT_TYPE = PROJECT.project_type.strip().lower()
