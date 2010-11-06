@@ -988,10 +988,13 @@ class BuildEngine(object):
         try:
             self.log.info('Tearing down customization environment...')
             self.log.debug('Restoring DNS configuration...')
-            if os.path.exists(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'resolv.conf')):
-                os.remove(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'resolv.conf'))
-            if os.path.exists(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'hosts')):
-                os.remove(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'hosts'))
+            try:
+                if os.path.exists(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'resolv.conf')):
+                    os.remove(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'resolv.conf'))
+                if os.path.exists(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'hosts')):
+                    os.remove(os.path.join(self.__distro.get_live_fs_dir(), 'etc'+os.sep+'hosts'))
+            except Exception, d:
+                pass # ignore errors to make sure temp dir gets unmounted
             # unmount /proc
             self.log.debug('Unmounting /proc')
             fs_tools.unmount_bind(os.path.join(self.__distro.get_live_fs_dir(), 'proc'))
