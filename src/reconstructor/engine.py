@@ -1508,11 +1508,11 @@ if __name__ == '__main__':
                 if ver == '9.04':
                     MKSQUASHFS = settings.MKSQUASHFS_3_3
                     UNSQUASHFS = settings.UNSQUASHFS_3_3
-                elif ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver == '13':
+                elif ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver != '10.10' or ver == '13':
                     MKSQUASHFS = settings.MKSQUASHFS_4_0
                     UNSQUASHFS = settings.UNSQUASHFS_4_0
                 else:
-                    log.warn('Unknown distro version.  Using system default squashfs-tools...')
+                    log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
             if '64' in ARCH:
                 if dist.lower() == 'fedora':
                     arch = 'x86_64'
