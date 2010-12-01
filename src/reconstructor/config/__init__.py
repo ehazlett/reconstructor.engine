@@ -121,6 +121,8 @@ class Project(object):
                         self._log.info('Loaded module: %s' % (f))
             except Exception, d:
                 self._log.error('Error loading module %s: %s' % (f, d))
+        # sort modules...
+        self.modules.sort()
         # change back to original dir
         os.chdir(orig_path)
         self._log.debug('Modules loaded: %s' % (self.modules))
