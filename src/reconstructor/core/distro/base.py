@@ -147,8 +147,9 @@ class BaseDistro(object):
             return False
 
     def run_modules(self, modules=None):
-        modules.sort()
-        for m in modules:
+        mods = modules
+        mods.sort()
+        for m in mods:
             try:
                 self.log.debug('Running %s' % (m))
                 x = m.Module()
