@@ -1478,7 +1478,7 @@ if __name__ == '__main__':
                         log.error('Unknown source environment: %s' % (dist))
                 # find arch
                 if '64' in ARCH:
-                    if dist.lower() == 'ubuntu' or dist.lower() == 'debian':
+                    if dist.lower().find('ubuntu') > -1 or dist.lower() == 'debian':
                         arch = 'amd64'
                     elif dist.lower() == 'fedora':
                         arch = 'x86_64'
