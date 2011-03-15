@@ -4,7 +4,7 @@
 #    settings.py   
 #        Settings module
 #
-#    Copyright (C) 2010  Lumentica
+#    Copyright (C) 2011  Lumentica
 #       http://www.lumentica.com
 #       info@lumentica.com
 #
@@ -32,8 +32,8 @@ import commands
 LOG_LEVEL=logging.DEBUG
 APP_NAME="Reconstructor Engine"
 APP_AUTHOR="Lumentica"
-APP_VERSION='3.4.4'
-APP_DEV_REV='20101201'
+APP_VERSION='3.5'
+APP_DEV_REV='20110315'
 APP_CODENAME=''
 APP_COPYRIGHT="%s %s (c) %s, %s" % (APP_NAME, str(APP_VERSION), APP_AUTHOR, str(date.today().year))
 APP_URL='https://reconstructor.apphosted.com'

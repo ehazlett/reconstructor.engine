@@ -23,7 +23,7 @@
                 <property name="has_tooltip">True</property>
                 <property name="tooltip_text" translatable="yes">Build Project</property>
                 <property name="is_important">True</property>
-                <property name="label" translatable="yes">Build</property>
+                <property name="label" translatable="yes">Run</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-execute</property>
                 <signal name="clicked" handler="on_toolbutton_build_clicked"/>

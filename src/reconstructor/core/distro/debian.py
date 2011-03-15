@@ -52,6 +52,7 @@ class DebianDistro(BaseDistro):
         self.__build_type = super(DebianDistro, self).get_build_type()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
+        self.__debian_version = None
 
         # check working dirs
         self.check_working_dirs()
@@ -66,6 +67,17 @@ class DebianDistro(BaseDistro):
                 return
             # extract
             squash_tools.extract_squash_fs(unsquashfs_cmd=self.__unsquash, filename=self.__live_fs_filename, dest_dir=self.__live_fs_dir)
+            info_file = os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')
+            if os.path.exists(info_file):
+                f = open(info_file, 'r')
+                info = f.read()
+                f.close()
+                try:
+                    self.__debian_version = info.split()[2].split('.')[0]
+                    self.log.debug('Found Debian version {0}'.format(self.__debian_version))
+                except:
+                    # ignore errors
+                    pass
             return True
         except Exception, d:
             self.log.error('Error extracting live squash filesystem: %s' % (d))
@@ -81,21 +93,27 @@ class DebianDistro(BaseDistro):
             for k in f:
                 if k.find('initrd.img') > -1:
                     if k.find('486') > -1:
-                        # copy the 486 initrd to iso dir
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd1.img' % (self.__iso_fs_dir))
+                        if self.__debian_version == '5':
+                            # copy the 486 initrd to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd1.img' % (self.__iso_fs_dir))
+                        else:
+                            # copy the 486 initrd to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd.img' % (self.__iso_fs_dir))
                     elif k.find('686') > -1:
                         # copy the 686 initrd to iso dir
                         shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd2.img' % (self.__iso_fs_dir))
 
                 if k.find('vmlinuz-') > -1:
                     if k.find('486') > -1:
-                        # copy the 486 kernel to iso dir
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz1' % (self.__iso_fs_dir))
+                        if self.__debian_version == '5':
+                            # copy the 486 kernel to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz1' % (self.__iso_fs_dir))
+                        else:
+                            # copy the 486 kernel to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz' % (self.__iso_fs_dir))
                     elif k.find('686') > -1:
                         # copy the  686 kernel to iso dir
                         shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz2' % (self.__iso_fs_dir))
-                        
-
         except Exception, d:
             self.log.error('Error updating boot kernel: %s' % (d))
             return False

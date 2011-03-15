@@ -1090,9 +1090,9 @@ class ReconstructorGui(object):
     def build(self):
         # check values
         project_filename = self.filechooser_project.get_filename()
-        if project_filename == None or not os.path.exists(project_filename):
-            log.error('You must select a valid project...')
-            return False
+        #if project_filename == None or not os.path.exists(project_filename):
+        #    log.error('You must select a valid project...')
+        #    return False
         src_iso_filename = self.filechooser_src_iso.get_filename()
         if src_iso_filename == None or not os.path.exists(src_iso_filename):
             log.error('You must select a valid source ISO...')
@@ -1142,45 +1142,69 @@ class ReconstructorGui(object):
             opts.skip_initrd_create = True
         else:
             opts.skip_initrd_create = False
+        if opts.build_type:
+            BUILD_TYPE = opts.build_type
+        else:
+            BUILD_TYPE = 'live'
         # build
-        PROJECT = Project(project_filename)
-        DISTRO_TYPE = PROJECT.distro
-        ARCH = PROJECT.arch
+        if project_filename:
+            PROJECT = Project(project_filename)
+            DISTRO_TYPE = PROJECT.distro
+            ARCH = PROJECT.arch
+        else:
+            PROJECT = None
+            # try to find distro from source iso; if not, fail
+            if 'ubuntu' in src_iso_filename:
+                DISTRO_TYPE = 'ubuntu'
+            elif 'debian' in src_iso_filename:
+                DISTRO_TYPE = 'debian'
+            else:
+                log.error('Unknown distro ; cannot build')
+                return
+            # try to find arch from source iso
+            if '386' in src_iso_filename or '686' in src_iso_filename:
+                ARCH = 'x86'
+            elif 'amd64' in src_iso_filename or 'x86_64' in src_iso_filename:
+                ARCH = 'x86_64'
         OUTPUT_FILE = target_filename
         WORKING_DIR = working_dir
             
         # set squashfs-tools
-        ver = PROJECT.distro_version.strip()
-        squash_version = commands.getoutput('mksquashfs -version').split('\n')[0]
-        if squash_version.find('3.3') > -1:
-            squash_version = Decimal('3.3')
-        elif squash_version.find('4.0') > -1:
-            squash_version = Decimal('4.0')
+        if PROJECT:
+            ver = PROJECT.distro_version.strip()
+            squash_version = commands.getoutput('mksquashfs -version').split('\n')[0]
+            if squash_version.find('3.3') > -1:
+                squash_version = Decimal('3.3')
+            elif squash_version.find('4.0') > -1:
+                squash_version = Decimal('4.0')
         MKSQUASHFS = commands.getoutput('which mksquashfs')
         UNSQUASHFS = commands.getoutput('which unsquashfs')
         # HACK: set globals for engine
         globals()['PROJECT'] = PROJECT
         globals()['DISTRO_TYPE'] = DISTRO_TYPE
         globals()['ARCH'] = ARCH
+        globals()['BUILD_TYPE'] = BUILD_TYPE
         globals()['OUTPUT_FILE'] = OUTPUT_FILE
         globals()['WORKINGDIR'] = WORKING_DIR
+        globals()['PRESEED'] = None
         globals()['MKSQUASHFS'] = MKSQUASHFS
         globals()['UNSQUASHFS'] = UNSQUASHFS
         # check squash for compatibility
-        if ver == '9.04' and squash_version < Decimal('3.3'):
-            log.error('You need to upgrade your SquashFS tools before preceding...')
-            return False
-        if ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver == '10.10' and squash_version < Decimal('4.0'):
-            log.error('You need to upgrade your SquashFS tools before preceding...')
-            return False
-        else:
-            if ver != '9.04' and ver != '9.10' and ver != '10.04' and ver != '10.04.1' and ver != '10.10':
-                log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
-        # check for ec2
-        PROJECT_TYPE = PROJECT.project_type.strip().lower()
-        if PROJECT_TYPE == 'ec2':
-            log.error('You cannot build EC2 projects with the standalone engine...')
-            return False
+        if PROJECT:
+            if ver == '9.04' and squash_version < Decimal('3.3'):
+                log.error('You need to upgrade your SquashFS tools before preceding...')
+                return False
+            if ver == '9.10' or ver == '10.04' or ver == '10.04.1' or ver == '10.10' and squash_version < Decimal('4.0'):
+                log.error('You need to upgrade your SquashFS tools before preceding...')
+                return False
+            else:
+                if ver != '9.04' and ver != '9.10' and ver != '10.04' and ver != '10.04.1' and ver != '10.10':
+                    log.warn('Unknown distro version (%s).  Using system default squashfs-tools...' % (ver))
+            # check for ec2
+            PROJECT_TYPE = PROJECT.project_type.strip().lower()
+            if PROJECT_TYPE == 'ec2':
+                log.error('You cannot build EC2 projects with the standalone engine...')
+                return False
         # start
         log.info('Starting Engine...')
         # update windows (set busy)
@@ -1188,7 +1212,7 @@ class ReconstructorGui(object):
         cursor = gtk.gdk.Cursor(gtk.gdk.WATCH)
         self.main_window.window.set_cursor(cursor)
         log.debug(WORKING_DIR)
-        eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, description=DESCRIPTION, working_dir=WORKING_DIR, src_iso_filename=src_iso_filename, project=PROJECT, output_file=target_filename)
+        eng = BuildEngine(distro=DISTRO_TYPE, arch=ARCH, description=DESCRIPTION, working_dir=WORKING_DIR, src_iso_filename=src_iso_filename, project=PROJECT, output_file=target_filename, build_type=BUILD_TYPE)
         # start engine in new thread to unblock UI
         threading.Thread(target=main, args=[eng,self]).start()
         return True
@@ -1370,7 +1394,7 @@ def launch_gui():
 
 # main
 if __name__ == '__main__':
-    print('\n%s (c) %s, 2010  %s\n' % ('Reconstructor Engine', 'Lumentica', 'http://www.lumentica.com'))
+    print('\n%s (c) %s, %s  %s\n' % ('Reconstructor Engine', 'Lumentica', datetime.datetime.today().year, 'http://www.lumentica.com'))
     PROJECT = None
     DISTRO_TYPE=None
     ARCH=None
