@@ -179,7 +179,7 @@ class BaseDistro(object):
                     elif s.lower().find('perl') > -1:
                         env = 'perl'
                         self.log.info('Using perl for interpreter...')
-                    p = subprocess.Popen('chroot %s %s /tmp/script > %s/tmp/script.log' % (self.__live_fs_dir, env, self.__live_fs_dir), shell=True)
+                    p = subprocess.Popen('chroot %s %s /tmp/script 2>&1 %s/tmp/script.log' % (self.__live_fs_dir, env, self.__live_fs_dir), shell=True)
                     # watch script to make sure it doesn't halt for input, etc.
                     if self.__online:
                         self.watch_process(p)
