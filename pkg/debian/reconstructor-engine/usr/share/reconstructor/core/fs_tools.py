@@ -41,12 +41,13 @@ def mount(src_file=None, dest_dir=None):
         log.debug('Using mount command: mount -v -o loop %s %s' % (src_file, dest_dir))
         # HACK: capture the output from the command and format chars to fit output from mount on one line
         cmd = commands.getoutput('mount -v -o loop %s %s' % (src_file, dest_dir)).split('\n')
-        log.debug('%s %s %s' % (cmd[0], cmd[1], cmd[2].lstrip()))
         if commands.getoutput('mount | grep %s' % (dest_dir)):
             return True
         else:
             return False
     except Exception, d:
+        import traceback
+        traceback.print_exc()
         log.error('Error mounting %s: %s' % (src_file, d))
         return False
         

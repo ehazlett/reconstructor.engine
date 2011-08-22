@@ -4,7 +4,7 @@
 #    settings.py   
 #        Settings module
 #
-#    Copyright (C) 2010  Lumentica
+#    Copyright (C) 2011  Lumentica
 #       http://www.lumentica.com
 #       info@lumentica.com
 #
@@ -32,20 +32,22 @@ LOG_LEVEL=logging.INFO
 #LOG_LEVEL=logging.DEBUG
 APP_NAME="Reconstructor Engine"
 APP_AUTHOR="Lumentica"
-APP_VERSION='3.2.3'
-APP_DEV_REV='20100305.1'
+APP_VERSION='3.5'
+APP_DEV_REV='20110315'
 APP_CODENAME=''
 APP_COPYRIGHT="%s %s (c) %s, %s" % (APP_NAME, str(APP_VERSION), APP_AUTHOR, str(date.today().year))
-APP_URL='https://build.reconstructor.org'
+APP_URL='https://reconstructor.apphosted.com'
 SITE_URL='http://www.reconstructor.org'
-HELP_URL=SITE_URL + '/wiki/reconstructor/EngineUserGuide'
-LVM_ROOT='/dev/rec'
-ONLINE_ISO_REPO=''
-QUEUE_URL=''
+HELP_URL='https://projects.lumentica.com/projects/reconstructor/wiki/EngineUserGuide'
+ISO_REPO='/srv/iso_repo'
+#LVM_ROOT='/dev/rec'
+LVM_ROOT=''
+ONLINE_ISO_REPO='/srv/rec_images'
+QUEUE_URL='https://reconstructor.apphosted.com/queue/next/'
 QUEUE_CHECK_INTERVAL = 10 # seconds
 MINIMUM_BUILD_FREE_SPACE = 2.0 # minimum space needed for online build (in GB)
 REPO_DOWNLOAD_URL='' # TODO: remove -- not used anymore
-SCRIPT_TIMEOUT = 600 # timeout for post script (in seconds)
+SCRIPT_TIMEOUT = 900 # timeout for post script (in seconds)
 APT_CACHER_ADDRESS = '' # use apt-cacher for package installation (i.e. 127.0.0.1:3142/
 MKSQUASHFS_3_3 = commands.getoutput('which mksquashfs')
 UNSQUASHFS_3_3 = commands.getoutput('which unsquashfs')

@@ -26,6 +26,7 @@ import logging
 import os
 import tempfile
 import time
+import commands
 from reconstructor.core import fs_tools
 
 log = logging.getLogger('IsoTools')
@@ -69,22 +70,20 @@ def extract(iso_filename=None, target_dir=None):
         if not fs_tools.unmount(tmpMntDir):
             log.error('Error unmounting %s; check log for details...' % (tmpMntDir))
             
-def create(arch=None, description=None, src_dir=None, dest_file=None):
-    if arch and src_dir and dest_file:
+def create(description=None, src_dir=None, dest_file=None):
+    if src_dir and dest_file:
         log.info('Creating ISO...')
-        log.debug('ISO info: %s %s %s' % (arch, description, src_dir))
-        if arch.lower() == 'x86':
-            os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
-            return True
-        elif arch.lower() == 'x86_64' or arch.lower() == 'amd64':
-            os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, description, src_dir))
-            return True
-        else:
-            log.error('Unable to create iso. Unknown architecture: %s' % (arch))
-            return False
+        # reduce description to 32 chars -- max supported by ISO
+        desc = description[:32]
+        update_md5sums(src_dir=src_dir)
+        os.system('mkisofs -o %s -b \"isolinux/isolinux.bin\" -c \"isolinux/boot.cat\" -no-emul-boot -boot-load-size 4 -boot-info-table -V \"%s\" -cache-inodes -r -J -l \"%s\"' % (dest_file, desc, src_dir))
+        # implant md5
+        os.system('implantisomd5 %s' % (dest_file))
+        log.info('MD5: %s' % (commands.getoutput('md5sum %s' % (dest_file)).split()[0]))
+        return True
     else:
-        log.debug('%s %s %s %s' % (arch, description, src_dir, dest_file))
-        log.error('You must specify architecture type, source directory, and destination file...')
+        log.debug('%s %s %s' % (desc, src_dir, dest_file))
+        log.error('You must specify source directory and destination file...')
         return False
 
 def burn():
@@ -92,9 +91,8 @@ def burn():
     
 def update_md5sums(src_dir=None):
     if os.path.exists(src_dir):
-        log.info('Updating MD5 sums...')
-        log.debug('Updating MD5 sums for %s...' % (src_dir))
-        os.system('cd %s ; find . -type f -print0 | xargs -0 md5sum > md5sum.txt' % (src_dir))
+        log.info('Updating md5sums...')
+        os.system('cd %s ; rm md5sum.txt ; find -type f -print0 | xargs -0 md5sum | grep -v isolinux/boot.cat | grep -v isolinux/isolinux.bin | tee md5sum.txt > /dev/null' % (src_dir))
         return True
     else:
         log.error('Path does not exist: %s' % (src_dir))

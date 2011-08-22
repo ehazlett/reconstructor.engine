@@ -33,9 +33,9 @@ import os
 import shutil
 
 class DebianDistro(BaseDistro):
-    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None):
+    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=None, run_post_config=True, mksquashfs=None, unsquashfs=None, build_type=None):
         # call base distro __init__
-        super(DebianDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config)
+        super(DebianDistro, self).__init__(arch=None, working_dir=working_dir, src_iso_filename=src_iso_filename, online=online, run_post_config=run_post_config, build_type=build_type)
         self.log = logging.getLogger('DebianDistro')
         # set live fs filename
         super(DebianDistro, self).set_live_fs_filename(os.path.join(super(DebianDistro, self).get_iso_fs_dir(), 'live' + os.sep + 'filesystem.squashfs'))
@@ -49,8 +49,10 @@ class DebianDistro(BaseDistro):
         self.__live_fs_filename = super(DebianDistro, self).get_live_fs_filename()
         self.__online = super(DebianDistro, self).get_online()
         self.__run_post_config = super(DebianDistro, self).get_run_post_config()
+        self.__build_type = super(DebianDistro, self).get_build_type()
         self.__mksquash = mksquashfs
         self.__unsquash = unsquashfs
+        self.__debian_version = None
 
         # check working dirs
         self.check_working_dirs()
@@ -65,6 +67,17 @@ class DebianDistro(BaseDistro):
                 return
             # extract
             squash_tools.extract_squash_fs(unsquashfs_cmd=self.__unsquash, filename=self.__live_fs_filename, dest_dir=self.__live_fs_dir)
+            info_file = os.path.join(self.__iso_fs_dir, '.disk' + os.sep + 'info')
+            if os.path.exists(info_file):
+                f = open(info_file, 'r')
+                info = f.read()
+                f.close()
+                try:
+                    self.__debian_version = info.split()[2].split('.')[0]
+                    self.log.debug('Found Debian version {0}'.format(self.__debian_version))
+                except:
+                    # ignore errors
+                    pass
             return True
         except Exception, d:
             self.log.error('Error extracting live squash filesystem: %s' % (d))
@@ -80,21 +93,27 @@ class DebianDistro(BaseDistro):
             for k in f:
                 if k.find('initrd.img') > -1:
                     if k.find('486') > -1:
-                        # copy the 486 initrd to iso dir
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd1.img' % (self.__iso_fs_dir))
+                        if self.__debian_version == '5':
+                            # copy the 486 initrd to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd1.img' % (self.__iso_fs_dir))
+                        else:
+                            # copy the 486 initrd to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd.img' % (self.__iso_fs_dir))
                     elif k.find('686') > -1:
                         # copy the 686 initrd to iso dir
                         shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/initrd2.img' % (self.__iso_fs_dir))
 
                 if k.find('vmlinuz-') > -1:
                     if k.find('486') > -1:
-                        # copy the 486 kernel to iso dir
-                        shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz1' % (self.__iso_fs_dir))
+                        if self.__debian_version == '5':
+                            # copy the 486 kernel to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz1' % (self.__iso_fs_dir))
+                        else:
+                            # copy the 486 kernel to iso dir
+                            shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz' % (self.__iso_fs_dir))
                     elif k.find('686') > -1:
                         # copy the  686 kernel to iso dir
                         shutil.copy('%s/boot/%s' % (self.__live_fs_dir, k), '%s/live/vmlinuz2' % (self.__iso_fs_dir))
-                        
-
         except Exception, d:
             self.log.error('Error updating boot kernel: %s' % (d))
             return False
@@ -141,8 +160,10 @@ class DebianDistro(BaseDistro):
             self.log.debug('Building initial ramdisk...')
             initrd1 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd1.img')
             initrd2 = os.path.join(self.__iso_fs_dir, 'live'+os.sep+'initrd2.img')
-            os.remove(initrd1)
-            os.remove(initrd2)
+            if os.path.exists(initrd1):
+                os.remove(initrd1)
+            if os.path.exists(initrd2):
+                os.remove(initrd2)
             os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd1'), initrd1))
             os.system('cd %s; find | cpio -H newc -o | gzip > %s' % (os.path.join(self.__initrd_dir, 'initrd2'), initrd2))
             return True
@@ -246,12 +267,41 @@ class DebianDistro(BaseDistro):
                 # kill all running process to prevent unmount errors
                 self.log.debug('Stopping all running process in chroot...')
                 if self.__online:
-                    os.system('fuser -km %s' % (self.__live_fs_dir))
+                    os.system('fuser -k %s' % (self.__live_fs_dir))
                 # TODO:  kill processes running in standalone engine -- if use above, crashes gnome-session...
         except Exception, d:
             self.log.error('Error adding packages: %s' % (d))
             return False
         
+    def remove_packages(self, packages=None):
+        try:
+            if len(packages) > 0:
+                pkg_list = ''
+                if type(packages) is type({}):
+                    for p in packages:
+                        #pkg_list += '%s=%s ' % (p, packages[p])
+                        pkg_list += '%s ' % (p)
+                        dpkg_pkgs += '%s ' % (p)
+                else:
+                    for p in packages:
+                        pkg_list += '%s ' % (p)
+                # create temp script
+                scr_file = os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh')
+                f = open(scr_file, 'w')
+                f.write('#!/bin/sh\n# Reconstructor package removal script\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y --force-yes --purge remove %s\n\nDEBIAN_FRONTEND=noninteractive apt-get -f -y autoremove\napt-get clean\napt-get autoclean\n\n' % (pkg_list))
+                f.close()
+                # make script executable
+                os.chmod(scr_file, 0775)
+                self.log.debug('Package removal list: %s' % (pkg_list))
+                # remove
+                p = subprocess.Popen('chroot %s /tmp/pkgs.sh' % (self.__live_fs_dir), shell=True)
+                os.waitpid(p.pid, 0)
+                # cleanup
+                os.remove(os.path.join(os.path.join(self.__live_fs_dir, 'tmp'), 'pkgs.sh'))
+            return True
+        except Exception, e:
+            self.log.error('Error removing packages: %s' % (e))
+            return False
         
     def enable_persistent_fs(self, size=64):
         '''Enables the casper-rw filesystem for saving changes between live sessions'''

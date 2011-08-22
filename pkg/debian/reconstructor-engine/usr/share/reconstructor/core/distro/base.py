@@ -39,7 +39,7 @@ from reconstructor.core import fs_tools
 
 class BaseDistro(object):
     '''Base class for all distributions.'''
-    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=False, run_post_config=True):
+    def __init__(self, arch=None, working_dir=None, src_iso_filename=None, online=False, run_post_config=True, build_type=None):
         self.log = logging.getLogger('BaseDistro')
         self.__arch = arch
         self.__work_dir = working_dir
@@ -51,6 +51,7 @@ class BaseDistro(object):
         self.__project_dir = None
         self.__online = online
         self.__run_post_config = run_post_config
+        self.__build_type = build_type
 
     # accessors
     def get_arch(self): return self.__arch
@@ -61,6 +62,7 @@ class BaseDistro(object):
     def get_iso_fs_dir(self): return self.__iso_fs_dir
     def get_initrd_dir(self): return self.__initrd_dir 
     def get_src_iso_filename(self): return self.__src_iso_filename 
+    def set_src_iso_filename(self, val): self.__src_iso_filename = val
     def get_live_fs_filename(self): return self.__live_fs_filename
     def get_project_dir(self): return self.__project_dir
     def get_project_files_dir(self): return os.path.join(self.__project_dir, 'files')
@@ -71,7 +73,8 @@ class BaseDistro(object):
     def set_initrd_dir(self, newValue): self.__initrd_dir = newValue
     def set_project_dir(self, newValue): self.__project_dir = newValue
     def set_live_fs_filename(self, newValue): self.__live_fs_filename = newValue
-    
+    def get_build_type(self): return self.__build_type
+
     # methods
     def watch_process(self, process=None):
         if process:
@@ -144,7 +147,9 @@ class BaseDistro(object):
             return False
 
     def run_modules(self, modules=None):
-        for m in modules:
+        mods = modules
+        mods.sort()
+        for m in mods:
             try:
                 self.log.debug('Running %s' % (m))
                 x = m.Module()
@@ -174,9 +179,12 @@ class BaseDistro(object):
                     elif s.lower().find('perl') > -1:
                         env = 'perl'
                         self.log.info('Using perl for interpreter...')
-                    p = subprocess.Popen('chroot %s %s /tmp/script > %s/tmp/script.log' % (self.__live_fs_dir, env, self.__live_fs_dir), shell=True)
+                    p = subprocess.Popen('chroot %s %s /tmp/script 2>&1 %s/tmp/script.log' % (self.__live_fs_dir, env, self.__live_fs_dir), shell=True)
                     # watch script to make sure it doesn't halt for input, etc.
-                    self.watch_process(p)
+                    if self.__online:
+                        self.watch_process(p)
+                    else:
+                        os.waitpid(p.pid, 0)
                     log_file = os.path.join(self.__live_fs_dir, 'tmp' + os.sep + 'script.log')
                     if os.path.exists(log_file):
                         f = open(log_file, 'r')

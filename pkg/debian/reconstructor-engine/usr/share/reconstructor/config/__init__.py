@@ -62,6 +62,7 @@ class Project(object):
         self.aws_s3_access_key = None
         self.disk_image_type = None
         self.disk_image_size = None
+        self.base_packages_removed = []
         # parse
         self.parse()
         # load packages
@@ -155,6 +156,9 @@ class Project(object):
                 self.arch = cfg.get('project', 'arch')
                 self.distro_version = cfg.get('project', 'distro_version')
                 self.src_iso = cfg.get('project', 'src_iso')
+                if cfg.has_option('project', 'base_packages_removed'):
+                    base_packages_removed = cfg.get('project', 'base_packages_removed')
+                    self.base_packages_removed = base_packages_removed.split(',')
                 if cfg.get('project', 'disk_image_type') != '':
                     self.disk_image_type = cfg.get('project', 'disk_image_type')
                 if cfg.get('project', 'disk_image_size') != '':
