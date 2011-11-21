@@ -200,24 +200,32 @@ class UbuntuDistro(BaseDistro):
                 if len(packages) > 0:
                     # add all package repositories
                     sources_cfg = os.path.join(os.path.join(os.path.join(self.__live_fs_dir, 'etc'), 'apt'), 'sources.list')
-                    # repo config
-                    f = open(sources_cfg, 'r')
-                    cfg = f.read().split('\n')
+                    ## repo config
+                    #f = open(sources_cfg, 'r')
+                    #cfg = f.read().split('\n')
+                    #f.close()
+                    #new_cfg = ''
+                    ## enable repos
+                    #for l in cfg:
+                    #    if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
+                    #        new_cfg += l[2:] + '\n'
+                    #    elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
+                    #        new_cfg += l[2:] + '\n'
+                    #    elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
+                    #        new_cfg += l[2:] + '\n'
+                    #    elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
+                    #        new_cfg += l[2:] + '\n'
+                    #    else:
+                    #        new_cfg += l + '\n'
+                    f = open(os.path.join(self.__live_fs_dir, 'etc' + os.sep + 'lsb-release'), 'r')
+                    c = f.read().split('\n')
                     f.close()
-                    new_cfg = ''
-                    # enable repos
-                    for l in cfg:
-                        if l.find('deb') > -1 and l.find('main') > -1 and l.startswith('#'):
-                            new_cfg += l[2:] + '\n'
-                        elif l.find('deb') > -1 and l.find('restricted') > -1 and l.startswith('#'):
-                            new_cfg += l[2:] + '\n'
-                        elif l.find('deb') > -1 and l.find('universe') > -1 and l.startswith('#'):
-                            new_cfg += l[2:] + '\n'
-                        elif l.find('deb') > -1 and l.find('multiverse') > -1 and l.startswith('#'):
-                            new_cfg += l[2:] + '\n'
-                        else:
-                            new_cfg += l + '\n'
+                    codename = ''
+                    for l in c:
+                        if l.find('CODENAME') > -1:
+                            codename = l.split('=')[-1].strip()
                     f = open(sources_cfg, 'w')
+                    new_cfg = 'deb http://us.archive.ubuntu.com/ubuntu/ {0} main restricted universe multiverse\ndeb-src http://us.archive.ubuntu.com/ubuntu/ {0} main restricted universe multiverse'.format(codename)
                     f.write(new_cfg)
                     f.close()
 
