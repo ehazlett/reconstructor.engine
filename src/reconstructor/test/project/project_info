@@ -1,9 +1,0 @@
-[project]
-name = TestProject
-author = Evan
-version = 0.1
-distro = ubuntu
-distro_version = 9.04
-arch = x86
-src_iso = /home/ehazlett/sort/xubuntu-8.10-desktop.iso
-output_file = /home/ehazlett/sort/test-custom.iso

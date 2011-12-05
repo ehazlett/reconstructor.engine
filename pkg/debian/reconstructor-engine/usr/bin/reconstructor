@@ -1,6 +1,0 @@
-#!/bin/sh
-#
-#   Reconstructor Engine Launcher
-#
-
-cd /usr/share/reconstructor ; gksudo -D "Reconstructor Engine" "python engine.py --gui"
