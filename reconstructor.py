@@ -15,6 +15,8 @@ if __name__=='__main__':
     available_distros = ['debian']
     parser = ArgumentParser(\
         description='{0}\n\nGNU/Linux distribution creator'.format(APP_NAME))
+    parser.add_argument("--name", action="store", \
+        dest="name", default="DebianCustom", help="Name of project")
     parser.add_argument("--distro", action="store", dest="distro", \
         help="Distro to build (debian, etc.)")
     parser.add_argument("--arch", action="store", dest="arch", \
@@ -23,8 +25,6 @@ if __name__=='__main__':
         dest="version", default='squeeze', help="Version to build (squeeze, wheezy, etc.)")
     parser.add_argument("--packages", action="store", \
         dest="packages", default="", help="Additional packages to add")
-    parser.add_argument("--name", action="store", \
-        dest="name", default="DebianCustom", help="Name of project")
 
     args = parser.parse_args()
     prj = None
@@ -35,8 +35,12 @@ if __name__=='__main__':
                 ','.join(available_distros)))
             sys.exit(1)
         if distro == 'debian':
-            pkgs = args.packages.split(',')
-            prj = Debian(arch=args.arch, version=args.version, packages=pkgs, name=args.name)
+            if args.packages.find(',') > -1:
+                pkgs = args.packages.split(',')
+            else:
+                pkgs = [args.packages]
+            prj = Debian(arch=args.arch, version=args.version, packages=pkgs, \
+                name=args.name)
             
     else:
         logging.error('You must specify a distro')
