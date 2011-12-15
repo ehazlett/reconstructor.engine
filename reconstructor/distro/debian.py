@@ -67,17 +67,18 @@ class Debian(BaseDistro):
 
     def build(self):
         self._log.debug('build')
+        self._log.info('Running config...')
         cmd = "cd {0} && ".format(self._build_dir)
         cmd += "lb config "
         cmd += "-a {0} ".format(self._arch)
         cmd += "-d {0} ".format(self._version)
         cmd += "--debian-installer live "
-        cmd += "--debian-installer-gui true "
+        #cmd += "--debian-installer-gui true "
         cmd += "--iso-application \"{0}\" ".format(self._copyright)
         cmd += "--iso-volume \"{0}\" ".format(self._name)
         cmd += "--archive-areas \"main contrib non-free\" "
-        #cmd += "--debian-installer-distribution {0} ".format(self._version)
-        cmd += "--debian-installer-distribution daily "
+        cmd += "--debian-installer-distribution {0} ".format(self._version)
+        #cmd += "--debian-installer-distribution daily "
         cmd += "--mode debian "
         if self._apt_cacher_host:
             if self._mirror.find('//') > -1:
@@ -89,10 +90,25 @@ class Debian(BaseDistro):
         cmd += "--packages \"{0}\" ".format(' '.join(self._packages))
         self._log.debug(cmd)
         self._run_command(cmd)
-        # build
+        # bootstrap
+        self._log.info('Running bootstrap...')
         cmd = "cd {0} && ".format(self._build_dir)
-        cmd += "lb build"
+        cmd += "lb bootstrap"
         self._run_command(cmd)
+        # chroot
+        self._log.info('Running chroot...')
+        cmd = "cd {0} && ".format(self._build_dir)
+        cmd += "lb chroot"
+        self._run_command(cmd)
+        # binary
+        self._log.info('Running binary...')
+        cmd = "cd {0} && ".format(self._build_dir)
+        cmd += "lb binary"
+        self._run_command(cmd)
+        ## build
+        #cmd = "cd {0} && ".format(self._build_dir)
+        #cmd += "lb build"
+        #self._run_command(cmd)
         if os.path.exists(os.path.join(self._build_dir, 'binary.iso')):
             iso_file = os.path.join(self._build_dir, 'binary.iso')
         elif os.path.exists(os.path.join(self._build_dir, 'binary-amd64.iso')):
@@ -103,5 +119,6 @@ class Debian(BaseDistro):
             iso_file = None
         if iso_file and os.path.exists(iso_file):
             os.rename(iso_file, os.path.join(os.getcwd(), '{0}-{1}.iso'.format(self._name, self._arch)))
+        self._log.info('Build complete...')
 
 
