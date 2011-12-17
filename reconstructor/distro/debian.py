@@ -8,12 +8,16 @@ try:
     import simplejson as json
 except ImportError:
     import json
+from reconstructor.buildserver import BuildLogHandler
 
 class Debian(BaseDistro):
     def __init__(self, project=None, version='squeeze', arch='i386', username='debian', packages=[],\
-        name='DebianCustom', apt_cacher_host=None, mirror=None):
+        name='DebianCustom', apt_cacher_host=None, mirror=None, **kwargs):
         super(Debian, self).__init__()
         self._log = logging.getLogger('debian')
+        if 'build_uuid' in kwargs:
+            blh = BuildLogHandler(build_uuid=kwargs['build_uuid'])
+            self._log.addHandler(blh)
         self._project = project
         self._name = name
         self._version = version
