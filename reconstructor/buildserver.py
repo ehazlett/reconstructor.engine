@@ -106,15 +106,15 @@ class BuildServer(object):
                     # get project package for build
                     r = urllib2.urlopen(urllib2.Request(self._build_package_url.format(\
                         build_data['uuid']), headers=self._headers))
-                    tmp_file = tempfile.mktemp()
-                    with open(tmp_file, 'wb') as f:
+                    tmp_prj_file = tempfile.mktemp()
+                    with open(tmp_prj_file, 'wb') as f:
                         shutil.copyfileobj(r,f)
                     tmp_dir = tempfile.mkdtemp()
                     tf = tarfile.open(tmp_file, 'r:gz')
                     tf.extractall(tmp_dir)
                     tf.close()
                     os.remove(tmp_file)
-                    # check config
+                     check config
                     cfg_file = os.path.join(tmp_dir, 'project.json')
                     if not os.path.exists(cfg_file):
                         bl.error('Invalid project config')
@@ -131,19 +131,15 @@ class BuildServer(object):
                     self._update_build_status(status='running', result='Starting build')
                     prj = None
                     # load distro type
-                    distro = prj_cfg['distro']['name'].lower()
+                    distro = build_data['distro']['name'].lower()
                     if distro == 'debian':
                         cur_dir = os.getcwd()
                         os.chdir(tmp_dir)
                         from reconstructor.distro.debian import Debian
-                        prj = Debian(arch=prj_cfg['arch'], version=prj_cfg['distro']['codename'], \
-                            name=prj_cfg['name'], apt_cacher_host=self._apt_cacher_host, \
+                        prj = Debian(project=tmp_prj_file, apt_cacher_host=self._apt_cacher_host, \
                             mirror=self._mirror, extra_log_handler=blh)
-                        bl.info('Configuring')
                         self._update_build_status(status='running', result='Configuring')
                         prj._config()
-                        bl.info('Bootstrapping')
-                        self._update_build_status(result='Bootstrapping')
                         self._update_build_status(result='Bootstrapping')
                         prj._bootstrap()
                         self._update_build_status(result='Installing packages and building chroot')
@@ -161,6 +157,7 @@ class BuildServer(object):
                             self._update_build_status(status='error', result='Error building project.  Please contact support.')
                         bl.info('Build complete')
                         os.chdir(cur_dir)
+                        os.remove(tmp_prj_file)
                         shutil.rmtree(tmp_dir)
                     else:
                         bl.error('Unknown distro: {0}'.format(distro))
