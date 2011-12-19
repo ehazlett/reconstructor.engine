@@ -110,10 +110,9 @@ class BuildServer(object):
                     with open(tmp_prj_file, 'wb') as f:
                         shutil.copyfileobj(r,f)
                     tmp_dir = tempfile.mkdtemp()
-                    tf = tarfile.open(tmp_file, 'r:gz')
+                    tf = tarfile.open(tmp_prj_file, 'r:gz')
                     tf.extractall(tmp_dir)
                     tf.close()
-                    os.remove(tmp_file)
                     # check config
                     cfg_file = os.path.join(tmp_dir, 'project.json')
                     if not os.path.exists(cfg_file):
