@@ -168,7 +168,6 @@ class BuildServer(object):
                         continue
                     # reset build_uuid
                     self._build_uuid = None
-                    self._log.info('Build complete')
                 time.sleep(5)
         except KeyboardInterrupt:
             self._log.info('Stopping Build Server')

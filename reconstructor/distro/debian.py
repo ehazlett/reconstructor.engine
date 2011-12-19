@@ -92,6 +92,8 @@ class Debian(BaseDistro):
         self._arch = prj['arch']
         self._version = prj['distro']['codename']
         self._packages = [x['name'] for x in prj['packages']]
+        self._log.debug('Project: {0} {1} ({2})'.format(self._name, self._version, self._arch))
+        self._log.debug('Packages: {0}'.format(self._packages))
 
     def _config(self):
         self._log.info('Configuring...')
