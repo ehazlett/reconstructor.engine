@@ -12,9 +12,12 @@ from reconstructor.buildserver import BuildLogHandler
 
 class Debian(BaseDistro):
     def __init__(self, project=None, version='squeeze', arch='i386', username='debian', packages=[],\
-        name='DebianCustom', apt_cacher_host=None, mirror=None, **kwargs):
+        name='DebianCustom', apt_cacher_host=None, mirror=None, extra_log_handler=None, **kwargs):
         super(Debian, self).__init__()
         self._log = logging.getLogger('debian')
+        if extra_log_handler:
+            extra_log_handler.setLevel(logging.DEBUG)
+            self._log.addHandler(extra_log_handler)
         if 'build_uuid' in kwargs:
             blh = BuildLogHandler(build_uuid=kwargs['build_uuid'])
             self._log.addHandler(blh)
@@ -69,9 +72,8 @@ class Debian(BaseDistro):
         self._version = prj['distro']['codename']
         self._packages = [x['name'] for x in prj['packages']]
 
-    def build(self):
-        self._log.debug('build')
-        self._log.info('Running config...')
+    def _config(self):
+        self._log.info('Configuring...')
         cmd = "cd {0} && ".format(self._build_dir)
         cmd += "lb config "
         cmd += "-a {0} ".format(self._arch)
@@ -92,27 +94,26 @@ class Debian(BaseDistro):
             cmd += "-m {0} ".format(self._mirror)
         cmd += "--username {0} ".format(self._username)
         cmd += "--packages \"{0}\" ".format(' '.join(self._packages))
-        self._log.debug(cmd)
+        #self._log.debug(cmd)
         self._run_command(cmd)
-        # bootstrap
+
+    def _bootstrap(self):
         self._log.info('Running bootstrap...')
         cmd = "cd {0} && ".format(self._build_dir)
         cmd += "lb bootstrap"
         self._run_command(cmd)
-        # chroot
+
+    def _chroot(self):
         self._log.info('Running chroot...')
         cmd = "cd {0} && ".format(self._build_dir)
         cmd += "lb chroot"
         self._run_command(cmd)
-        # binary
+    
+    def _build_iso(self):
         self._log.info('Running binary...')
         cmd = "cd {0} && ".format(self._build_dir)
         cmd += "lb binary"
         self._run_command(cmd)
-        ## build
-        #cmd = "cd {0} && ".format(self._build_dir)
-        #cmd += "lb build"
-        #self._run_command(cmd)
         if os.path.exists(os.path.join(self._build_dir, 'binary.iso')):
             iso_file = os.path.join(self._build_dir, 'binary.iso')
         elif os.path.exists(os.path.join(self._build_dir, 'binary-amd64.iso')):
@@ -123,6 +124,16 @@ class Debian(BaseDistro):
             iso_file = None
         if iso_file and os.path.exists(iso_file):
             os.rename(iso_file, os.path.join(os.getcwd(), '{0}-{1}.iso'.format(self._name, self._arch)))
-        self._log.info('Build complete...')
+
+    def build(self):
+        # config
+        self._config()
+        # bootstrap
+        self._bootstrap()
+        # chroot
+        self._chroot()
+        # binary
+        self._build_iso()
+        self._log.info('Build complete')
 
 

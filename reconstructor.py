@@ -1,10 +1,15 @@
 #!/usr/bin/env python
+import os
 from argparse import ArgumentParser
 import reconstructor
 from reconstructor.distro.debian import Debian
 from reconstructor.buildserver import BuildServer
 import sys
 import logging
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 APP_NAME = 'Reconstructor'
 APP_VERSION = reconstructor.__version__
@@ -29,6 +34,8 @@ if __name__=='__main__':
         default=None, help="Reconstructor app url for Build Server")
     parser.add_argument("--key", action="store", dest="key", \
         default=None, help="Key for Build Server")
+    parser.add_argument("--output-dir", action="store", dest="output_dir", \
+        default=None, help="Output directory for Build Server")
     parser.add_argument("--project", action="store", \
         dest="project", default=None, help="Reconstructor project file")
     parser.add_argument("--name", action="store", \
@@ -52,10 +59,41 @@ if __name__=='__main__':
     setup_logging(log_file=args.log)
     # check for build server option
     if args.build_server:
-        if not args.app_url or not args.key:
+        # check for config
+        if os.path.exists('config.json'):
+            logging.debug('Loading config.json')
+            try:
+                with open('config.json', 'r') as f:
+                    cfg = json.loads(f.read())
+                if 'apt_cacher_host' in cfg:
+                    apt_cacher_host = cfg['apt_cacher_host']
+                if 'app_url' in cfg:
+                    app_url = cfg['app_url']
+                if 'key' in cfg:
+                    key = cfg['key']
+                if 'mirror' in cfg:
+                    mirror = cfg['mirror']
+                if 'output_dir' in cfg:
+                    output_dir = cfg['output_dir']
+            except Exception, e:
+                # ignore parse errors
+                logging.warn('Unable to parse config.json: {0}'.format(e))
+        # get 
+        if args.apt_cacher_host:
+            apt_cacher_host = args.apt_cacher_host
+        if args.app_url:
+            app_url = args.app_url
+        if args.key:
+            key = args.key
+        if args.mirror:
+            mirror = args.mirror
+        if args.output_dir:
+            output_dir = args.output_dir
+        if not app_url or not key:
             logging.error('You must specify --app-url and --key with --build-server')
             sys.exit(1)
-        srv = BuildServer(app_url=args.app_url, key=args.key)
+        srv = BuildServer(app_url=app_url, output_dir=output_dir, key=key, \
+            apt_cacher_host=apt_cacher_host, mirror=mirror)
         srv.start()
         sys.exit(0)
     prj = None

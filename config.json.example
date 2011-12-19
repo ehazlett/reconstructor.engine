@@ -1,0 +1,7 @@
+{
+  "app_url": "http://localhost:5000",
+  "apt_cacher_host": "localhost:3142",
+  "key": "defaultbuildkey",
+  "mirror": "ftp.us.debian.org/debian",
+  "output_dir": "/tmp"
+}

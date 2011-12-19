@@ -3,3 +3,4 @@
 *.nfs*
 *.log
 *.iso
+config.json
