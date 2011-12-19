@@ -4,6 +4,9 @@ from base import BaseDistro
 import logging
 import tarfile
 from subprocess import Popen, PIPE
+from threading import Thread
+from Queue import Queue, Empty
+import time
 try:
     import simplejson as json
 except ImportError:
@@ -59,6 +62,24 @@ class Debian(BaseDistro):
     def packages(self):
         return self._packages
 
+    def _run(self, cmds=None, cwd=None):
+        """
+        This run method will stream the output of the command
+
+        """
+        if not cmds:
+            return False
+        if cwd:
+            os.chdir(cwd)
+        p = Popen(cmds, stdout=PIPE, bufsize=1, close_fds=False)
+        out = p.stdout
+        while True:
+            o = out.readline()
+            if o != '':
+                self._log.debug(o.replace('\n', ''))
+            else:
+                break
+
     def _load_project(self):
         if not os.path.exists(self._project):
             self._log.error('Unable to find project file {0}'.format(self._project))
@@ -99,21 +120,26 @@ class Debian(BaseDistro):
 
     def _bootstrap(self):
         self._log.info('Running bootstrap...')
-        cmd = "cd {0} && ".format(self._build_dir)
-        cmd += "lb bootstrap"
-        self._run_command(cmd)
+        #cmd = "cd {0} && ".format(self._build_dir)
+        cmds = ['lb', 'bootstrap']
+        #self._run_command(cmd)
+        self._run(cmds, self._build_dir)
 
     def _chroot(self):
         self._log.info('Running chroot...')
-        cmd = "cd {0} && ".format(self._build_dir)
-        cmd += "lb chroot"
-        self._run_command(cmd)
+        #cmd = "cd {0} && ".format(self._build_dir)
+        #cmd += "lb chroot"
+        #self._run_command(cmd)
+        cmds = ['lb', 'chroot']
+        self._run(cmds, self._build_dir)
     
     def _build_iso(self):
         self._log.info('Running binary...')
-        cmd = "cd {0} && ".format(self._build_dir)
-        cmd += "lb binary"
-        self._run_command(cmd)
+        #cmd = "cd {0} && ".format(self._build_dir)
+        #cmd += "lb binary"
+        #self._run_command(cmd)
+        cmds = ['lb', 'binary']
+        self._run(cmds, self._build_dir)
         if os.path.exists(os.path.join(self._build_dir, 'binary.iso')):
             iso_file = os.path.join(self._build_dir, 'binary.iso')
         elif os.path.exists(os.path.join(self._build_dir, 'binary-amd64.iso')):

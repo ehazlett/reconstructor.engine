@@ -159,6 +159,7 @@ class BuildServer(object):
                                     open(prj_iso, 'rb'))})
                         else:
                             self._update_build_status(status='error', result='Error building project.  Please contact support.')
+                        bl.info('Build complete')
                         os.chdir(cur_dir)
                         shutil.rmtree(tmp_dir)
                     else:
