@@ -114,7 +114,7 @@ class BuildServer(object):
                     tf.extractall(tmp_dir)
                     tf.close()
                     os.remove(tmp_file)
-                     check config
+                    # check config
                     cfg_file = os.path.join(tmp_dir, 'project.json')
                     if not os.path.exists(cfg_file):
                         bl.error('Invalid project config')
