@@ -155,7 +155,7 @@ class BuildServer(object):
                             #r = requests.post(self._build_upload_url, headers=self._headers, \
                             #    files={'build': ('{0}.iso'.format(build_data['uuid']), \
                             #        open(prj_iso, 'rb'))})
-                            while True;
+                            while True:
                                 try:
                                     r = pycurl.Curl()
                                     r.setopt(pycurl.URL, self._build_upload_url)
