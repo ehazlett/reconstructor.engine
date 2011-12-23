@@ -81,6 +81,8 @@ class BuildServer(object):
     def start(self):
         self._log.debug('Using Reconstructor app at {0}'.format(self._app_url))
         self._log.debug('Output dir: {0}'.format(self._output_dir))
+        if self._apt_cacher_host:
+            self._log.debug('Using APT cacher at {0}'.format(self._apt_cacher_host))
         self._log.info('Starting Build Server')
         try:
             while True:
@@ -160,7 +162,7 @@ class BuildServer(object):
                                     r = pycurl.Curl()
                                     r.setopt(pycurl.URL, self._build_upload_url)
                                     for k,v in self._headers.iteritems():
-                                        r.setopt(pycurl.HTTPHEADER, '{0}: {1}'.format(k,v))
+                                        r.setopt(pycurl.HTTPHEADER, ['{0}: {1}'.format(k,v)])
                                     r.setopt(pycurl.HTTPPOST, [('build', (pycurl.FORM_FILE, prj_iso, pycurl.FORM_FILENAME, '{0}.iso'.format(build_data['uuid'])))])
                                     r.perform()
                                 except Exception, e:
