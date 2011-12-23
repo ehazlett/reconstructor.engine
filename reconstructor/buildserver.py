@@ -8,6 +8,7 @@ import urllib2
 import shutil
 import tempfile
 import tarfile
+import pycurl
 import reconstructor
 try:
     import simplejson as json
@@ -147,11 +148,30 @@ class BuildServer(object):
                         prj._build_iso()
                         self._update_build_status(status='complete', result='Build complete')
                         prj_iso = '{0}-{1}.iso'.format(prj_cfg['name'], prj_cfg['arch'])
+                        tries = 0
                         if os.path.exists(prj_iso):
                             # upload
-                            r = requests.post(self._build_upload_url, headers=self._headers, \
-                                files={'build': ('{0}.iso'.format(build_data['uuid']), \
-                                    open(prj_iso, 'rb'))})
+                            # requests.post causes out of memory errors with large files...
+                            #r = requests.post(self._build_upload_url, headers=self._headers, \
+                            #    files={'build': ('{0}.iso'.format(build_data['uuid']), \
+                            #        open(prj_iso, 'rb'))})
+                            while True;
+                                try:
+                                    r = pycurl.Curl()
+                                    r.setopt(pycurl.URL, self._build_upload_url)
+                                    for k,v in self._headers.iteritems():
+                                        r.setopt(pycurl.HTTPHEADER, '{0}: {1}'.format(k,v))
+                                    r.setopt(pycurl.HTTPPOST, [('build', (pycurl.FORM_FILE, prj_iso, pycurl.FORM_FILENAME, '{0}.iso'.format(build_data['uuid'])))])
+                                    r.perform()
+                                except Exception, e:
+                                    self._log.warn('Error during upload: {0} ; trying again...'.format(e))
+                                    if tries < 3:
+                                        tries += 1
+                                        time.sleep(10)
+                                    else:
+                                        bl.error('Unable to upload build.  Please contact support.')
+                                        self._update_build_status(status='error', result='Error building project.  Please contact support.')
+                                        break
                         else:
                             self._update_build_status(status='error', result='Error building project.  Please contact support.')
                         bl.info('Build complete')
