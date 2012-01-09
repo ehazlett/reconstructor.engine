@@ -153,13 +153,15 @@ class Debian(BaseDistro):
         if iso_file and os.path.exists(iso_file):
             os.rename(iso_file, os.path.join(os.getcwd(), '{0}-{1}.iso'.format(self._name, self._arch)))
 
-    def build(self):
-        # config
+    def _pre_build(self):
         self._config()
-        # bootstrap
         self._bootstrap()
+
+    def _build_distro(self):
         # chroot
         self._chroot()
+
+    def _post_build(self):
         # binary
         self._build_iso()
         self._log.info('Build complete')

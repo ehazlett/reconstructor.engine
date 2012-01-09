@@ -31,11 +31,16 @@ class BaseDistro(object):
             except Exception, e:
                 print(e)
                 break
+    
 
     def build(self):
         self._pre_build()
-        self._log.debug('build')
+        self._build_distro()
+        self._run_modules()
         self._post_build()
+
+    def _run_modules(self):
+        self._log.debug('run_modules')
 
     def _post_build(self):
         self._log.debug('post_build')
