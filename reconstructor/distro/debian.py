@@ -30,6 +30,7 @@ class Debian(BaseDistro):
         self._arch = arch
         self._username = username
         self._packages = packages
+        self._modules = []
         if apt_cacher_host and apt_cacher_host != '':
             self._apt_cacher_host = apt_cacher_host
         else:
@@ -92,6 +93,7 @@ class Debian(BaseDistro):
         self._arch = prj['arch']
         self._version = prj['distro']['codename']
         self._packages = [x['name'] for x in prj['packages']]
+        self._modules = prj['modules']
         self._log.debug('Project: {0} {1} ({2})'.format(self._name, self._version, self._arch))
         self._log.debug('Packages: {0}'.format(self._packages))
 

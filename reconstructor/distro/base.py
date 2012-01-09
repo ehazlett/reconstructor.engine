@@ -12,6 +12,7 @@ class BaseDistro(object):
         self._build_dir = tempfile.mkdtemp()
         self._copyright = 'Reconstructor (c) Lumentica, 2011'
         self._log = logging.getLogger('base')
+        self._log.debug('Build dir: {0}'.format(self._build_dir))
 
     def _pre_build(self):
         self._log.debug('pre_build')
@@ -41,6 +42,32 @@ class BaseDistro(object):
 
     def _run_modules(self):
         self._log.debug('run_modules')
+        cur_dir = os.getcwd()
+        # change to build dir
+        os.chdir(self._build_dir)
+        mods = []
+        if self._modules:
+            self._log.info('Running modules')
+            for mod in self._modules:
+                self._log.debug(mod)
+                try:
+                    m = __import__('.'.join(mod['module'].split('.')[0:-1]))
+                    self._log.debug(m)
+                    x = getattr(m, '.'.join(mod['module'].split('.')[1:-1]))
+                    self._log.debug(x)
+                    kls = getattr(x, mod['module'].split('.')[-1])
+                    self._log.debug(kls)
+                except Exception, e:
+                    self._log.error('Error loading module: {0}'.format(e))
+                    continue
+                try:
+                    a = kls(chroot=os.path.join(self._build_dir, 'chroot'), \
+                        build_dir=self._build_dir, **mod['options'][0])
+                    self._log.info('Running module: {0}'.format(a.__name__))
+                    a.run()
+                except Exception, e:
+                    self._log.error('Error running module: {0}'.format(e))
+                self._log.info('Module {0} complete'.format(a.__name__))
 
     def _post_build(self):
         self._log.debug('post_build')

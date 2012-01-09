@@ -140,14 +140,8 @@ class BuildServer(object):
                         from reconstructor.distro.debian import Debian
                         prj = Debian(project=tmp_prj_file, apt_cacher_host=self._apt_cacher_host, \
                             mirror=self._mirror, extra_log_handler=blh)
-                        self._update_build_status(status='running', result='Configuring')
-                        prj._config()
-                        self._update_build_status(result='Bootstrapping')
-                        prj._bootstrap()
-                        self._update_build_status(result='Installing packages and building chroot')
-                        prj._chroot()
-                        self._update_build_status(result='Building project and creating ISO')
-                        prj._build_iso()
+                        self._update_build_status(status='running', result='Building')
+                        prj.build()
                         self._update_build_status(status='complete', result='Build complete')
                         prj_iso = '{0}-{1}.iso'.format(prj_cfg['name'], prj_cfg['arch'])
                         tries = 0
