@@ -4,6 +4,7 @@ import sys
 import logging
 import tempfile
 import shutil
+import traceback
 from subprocess import Popen, PIPE, call
 import errno
 import time
@@ -60,16 +61,16 @@ class BaseDistro(object):
                     kls = getattr(x, mod['module'].split('.')[-1])
                     self._log.debug(kls)
                 except Exception, e:
-                    self._log.error('Error loading module: {0}'.format(e))
+                    self._log.error('Error loading module: {0}'.format(traceback.format_exc()))
                     continue
                 try:
                     a = kls(chroot=os.path.join(self._build_dir, 'chroot'), \
-                        build_dir=self._build_dir, **mod['options'][0])
-                    self._log.info('Running module: {0}'.format(a.__name__))
+                        build_dir=self._build_dir, **mod['options'])
+                    self._log.info('Running module: {0}'.format(a))
                     a.run()
-                    self._log.info('Module {0} complete'.format(a.__name__))
+                    self._log.info('Module {0} complete'.format(a))
                 except Exception, e:
-                    self._log.error('Error running module: {0}'.format(e))
+                    self._log.error('Error running module: {0}'.format(traceback.format_exc()))
 
     def _post_build(self):
         self._log.debug('post_build')
