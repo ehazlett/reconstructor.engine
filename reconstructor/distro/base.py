@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import sys
 import logging
 import tempfile
 import shutil
@@ -42,9 +43,10 @@ class BaseDistro(object):
 
     def _run_modules(self):
         self._log.debug('run_modules')
-        cur_dir = os.getcwd()
-        # change to build dir
-        os.chdir(self._build_dir)
+        #cur_dir = os.getcwd()
+        ## change to build dir
+        #os.chdir(self._build_dir)
+        sys.path.append(self._build_dir)
         mods = []
         if self._modules:
             self._log.info('Running modules')
@@ -65,9 +67,9 @@ class BaseDistro(object):
                         build_dir=self._build_dir, **mod['options'][0])
                     self._log.info('Running module: {0}'.format(a.__name__))
                     a.run()
+                    self._log.info('Module {0} complete'.format(a.__name__))
                 except Exception, e:
                     self._log.error('Error running module: {0}'.format(e))
-                self._log.info('Module {0} complete'.format(a.__name__))
 
     def _post_build(self):
         self._log.debug('post_build')
