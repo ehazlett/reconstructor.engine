@@ -7,3 +7,4 @@ local_settings.py
 newrelic.ini
 *DS_Store*
 .vagrant
+*.iso

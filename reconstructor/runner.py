@@ -44,7 +44,7 @@ def main():
     parser = OptionParser()
     parser.add_option('--name', dest='name', default='Reconstructor Live CD',
         help='Distribution Name')
-    parser.add_option('--hostname', dest='hostname',
+    parser.add_option('--hostname', dest='hostname', default='live',
         help='Distribution Hostname')
     parser.add_option('--arch', dest='arch', default='i386',
         help='Distribution Architecture (i.e. i386, amd64)')

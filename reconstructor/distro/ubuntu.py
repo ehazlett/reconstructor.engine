@@ -46,8 +46,8 @@ class Ubuntu(BaseDistro):
         self._setup_network()
         self._setup_apt()
         self._setup_machine()
-        self._setup_iso_dir()
         self._install_extra_packages()
+        self._setup_iso_dir()
 
     def _mount_dev(self):
         self.log.debug('Mounting filesystems')
@@ -106,7 +106,6 @@ deb-src http://us.archive.ubuntu.com/ubuntu/ {0} restricted
         # install packages for live env
         self.add_packages(['ubuntu-minimal', 'casper', 'psmisc'])
         self.add_packages(['discover', 'laptop-detect', 'os-prober'])
-        self.log.debug('-----MARK-----')
         # set grub-pc selections for automated
         grub_pc_selections = """grub-pc grub-pc/kopt_extracted  boolean false
 grub-pc grub2/kfreebsd_cmdline  string
@@ -132,6 +131,9 @@ grub-pc grub-pc/timeout string  10"""
         self._run_chroot_command(cmd)
         self.add_packages(['grub2', 'grub-pc'])
         self.add_packages(['linux-image-generic'])
+        cmd = "DEBCONF_FRONTEND=noninteractive apt-get install -y " \
+            "--no-install-recommends network-manager"
+        self._run_chroot_command(cmd)
 
     def _setup_iso_dir(self):
         dirs = ['casper', 'isolinux', 'install', '.disk']
@@ -149,8 +151,8 @@ grub-pc grub-pc/timeout string  10"""
         cmd = "cp /usr/lib/syslinux/isolinux.bin {1}/isolinux/".format(
             self._chroot_dir, self._iso_dir)
         self._run_command(cmd)
-        cmd = "echo \"***** Live CD *****\" > {0}/isolinux/isolinux.txt".format(
-            self._iso_dir)
+        cmd = "echo \"***** {0} *****\" > {1}/isolinux/isolinux.txt".format(
+            self._name, self._iso_dir)
         self._run_command(cmd)
         boot_tmpl = """DEFAULT live
 LABEL live
@@ -257,11 +259,15 @@ PROMPT 1
             self._name)
         open(os.path.join(self._iso_dir, '.disk/release_notes_url'), 'w').write(
             self._url)
+        open(os.path.join(self._iso_dir, '.disk/reconstructor'), 'w').write(
+            'Built by Reconstructor')
         # generate md5s
         cmd = "(cd {0} ; find . -type f -print0 | xargs -0 md5sum | grep -v \"\./md5sum.txt\" > md5sum.txt)".format(self._iso_dir)
         self._run_command(cmd)
         cmd = "cd {0} ; mkisofs -r -V \"{1}\" -cache-inodes -J -l -b isolinux/isolinux.bin -c isolinux/boot.cat -no-emul-boot -boot-load-size 4 -boot-info-table -o \"{2}\" .".format(
             self._iso_dir, self._name, self._output_file)
+        self._run_command(cmd)
+        cmd = "md5sum {0}".format(self._output_file)
         self._run_command(cmd)
 
     def run_chroot_script(self):
